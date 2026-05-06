@@ -148,7 +148,7 @@ For the best try-on results:
 
 When you call `sdk.personalize({ imageUrl, productType })`, the SDK:
 
-1. Maps your `productType` to a **broad category** (sent to HyperPersona as `category`)
+1. Maps your `productType` to a **broad category** (sent to HP as `category`)
 2. Maps your `productType` to a **descriptive label** (sent as `product_type`)
 
 | `productType` | Category sent | Label sent |

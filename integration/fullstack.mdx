@@ -6,13 +6,13 @@ description: For developers who have both a frontend and a backend (Next.js, Rea
 ## Overview
 
 In full-stack mode:
-- Your **backend** holds the HyperPersona API key (never exposed to the browser)
+- Your **backend** holds the HP API key (never exposed to the browser)
 - Your **backend** generates short-lived session tokens (1hr JWT)
 - Your **frontend** uses the SDK with those tokens
-- The SDK sends requests to your backend proxy, which forwards to HyperPersona
+- The SDK sends requests to your backend proxy, which forwards to HP
 
 ```
-Browser (SDK) → Your Backend Proxy → HyperPersona AI
+Browser (SDK) → Your Backend Proxy → HP AI
 ```
 
 ---
@@ -286,7 +286,7 @@ document.getElementById("tryOnBtn").addEventListener("click", async () => {
     Check your proxy endpoints exist and are running. Make sure CORS is configured on your backend.
   </Accordion>
   <Accordion title='"Personalization timed out"'>
-    HyperPersona may be under load — retry. Increase `pollMaxAttempts` in config if needed.
+    HP may be under load — retry. Increase `pollMaxAttempts` in config if needed.
   </Accordion>
   <Accordion title="Next.js Turbopack issue">
     Use `next dev --webpack` instead of `next dev`.

@@ -12,7 +12,7 @@ This guide is for **Gennoctua team members only**. It contains admin credentials
 This guide is for **Gennoctua team members** onboarding a new brand.
 
 When a new brand signs up:
-1. You get their HyperPersona API key
+1. You get their HP API key
 2. You generate a brand key for them (`gn_pk_...`)
 3. You register them in the database
 4. You send them their brand key
@@ -20,15 +20,15 @@ When a new brand signs up:
 
 ---
 
-## Step 1 — Get Their HyperPersona API Key
+## Step 1 — Get Their HP API Key
 
-The brand's HP API key comes from the HyperPersona dashboard. It looks like:
+The brand's HP API key comes from the HP dashboard. It looks like:
 
 ```
 hpk_ZMtMItJxHOvvJkY9eGU12dJKRMB-bsJP3xoYSyRphAc
 ```
 
-This key is tied to their usage quota in HyperPersona.
+This key is tied to their usage quota in HP.
 
 ---
 
@@ -170,8 +170,8 @@ Once the brand is registered, every shopper visit triggers this flow:
 4. Shopper uploads photos → processed locally in browser
 5. Shopper clicks Try On
 6. SDK calls POST /api/tryon/submit with JWT
-7. Gennoctua validates JWT → looks up hp_api_key → forwards to HyperPersona
-8. HyperPersona generates image → SSE stream back to browser
+7. Gennoctua validates JWT → looks up hp_api_key → forwards to HP
+8. HP generates image → SSE stream back to browser
 9. Result cached in browser for 7 days
 10. Shopper sees the try-on (~20 seconds total)
 ```
@@ -180,7 +180,7 @@ Once the brand is registered, every shopper visit triggers this flow:
 
 ## Checklist
 
-<Check>HyperPersona API key received from brand</Check>
+<Check>HP API key received from brand</Check>
 <Check>Brand key generated (`gn_pk_...`)</Check>
 <Check>Brand registered via Admin API</Check>
 <Check>Registration verified via GET /admin/brands</Check>

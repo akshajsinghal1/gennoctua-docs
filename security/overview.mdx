@@ -7,7 +7,7 @@ description: How the SDK protects API keys, user data, and prevents abuse.
 
 The SDK is designed around three security principles:
 
-1. **API keys never touch the browser** — HyperPersona API keys live on the backend only
+1. **API keys never touch the browser** — HP API keys live on the backend only
 2. **Short-lived tokens** — browsers only ever hold JWTs that expire in 1 hour
 3. **Defense in depth** — rate limiting, token validation, and CORS work together
 
@@ -17,9 +17,9 @@ The SDK is designed around three security principles:
 
 | Data | Location | Why |
 |---|---|---|
-| HyperPersona API key | Backend only | If exposed in browser, anyone could use it |
+| HP API key | Backend only | If exposed in browser, anyone could use it |
 | JWT session token | Browser (memory) | Short-lived (1hr), limited to try-on only |
-| Brand key (`gn_pk_...`) | Browser (code) | Safe — only fetches JWTs, can't call HyperPersona directly |
+| Brand key (`gn_pk_...`) | Browser (code) | Safe — only fetches JWTs, can't call HP directly |
 | User photos | Browser only | Never stored on any server (processed locally) |
 | Try-on result URLs | Browser IndexedDB | Cached for 7 days, local to device |
 
@@ -50,7 +50,7 @@ Photos uploaded by the shopper are processed **entirely in the browser**:
 - Photos are not logged, indexed, or retained
 
 <Info>
-Only the **selected profile photo** (one photo) is sent to HyperPersona for AI generation. All other uploaded photos are processed and discarded in the browser.
+Only the **selected profile photo** (one photo) is sent to HP for AI generation. All other uploaded photos are processed and discarded in the browser.
 </Info>
 
 ---
@@ -138,7 +138,7 @@ In frontend-only mode, the Gennoctua backend handles CORS automatically.
 Brand keys (`gn_pk_...`) are designed to be safe in frontend code:
 
 - They can only be used to fetch short-lived JWTs
-- They cannot directly call HyperPersona
+- They cannot directly call HP
 - If a brand key is leaked, you can deactivate it instantly via the Admin API
 - Rate limiting caps any abuse
 

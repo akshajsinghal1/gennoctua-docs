@@ -178,7 +178,7 @@ sdk.on("personalization:cache_hit", (result) => {
 
 ### `personalization:job_created`
 
-Fired when a job is successfully submitted to HyperPersona.
+Fired when a job is successfully submitted to HP.
 
 ```ts
 sdk.on("personalization:job_created", ({ jobId }) => {
@@ -188,7 +188,7 @@ sdk.on("personalization:job_created", ({ jobId }) => {
 
 | Field | Type | Description |
 |---|---|---|
-| `jobId` | `string` | HyperPersona job ID |
+| `jobId` | `string` | HP job ID |
 
 ---
 
@@ -204,7 +204,7 @@ sdk.on("personalization:polling_started", ({ jobId }) => {
 
 | Field | Type | Description |
 |---|---|---|
-| `jobId` | `string` | HyperPersona job ID |
+| `jobId` | `string` | HP job ID |
 
 ---
 
@@ -223,7 +223,7 @@ sdk.on("personalization:completed", (result) => {
 |---|---|---|
 | `imageUrl` | `string` | Try-on image URL |
 | `cacheHit` | `boolean` | `false` (fresh generation) |
-| `jobId` | `string` | HyperPersona job ID |
+| `jobId` | `string` | HP job ID |
 
 ---
 

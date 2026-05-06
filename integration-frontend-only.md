@@ -8,13 +8,13 @@
 
 In frontend-only mode, Gennoctua's servers handle everything on the backend for you:
 - Token generation
-- Proxying to HyperPersona
+- Proxying to HP
 - API key management
 
 You just need a **brand key** (`gn_pk_...`) from Gennoctua.
 
 ```
-Browser (SDK) → Gennoctua Backend → HyperPersona AI
+Browser (SDK) → Gennoctua Backend → HP AI
 ```
 
 ---
@@ -302,7 +302,7 @@ Add to your product page template (`sections/product.liquid` or similar):
 - At least one photo required
 
 **"Personalization timed out"**
-- HyperPersona may be under load — retry
+- HP may be under load — retry
 - Check your internet connection
 
 **Try-on result looks wrong**

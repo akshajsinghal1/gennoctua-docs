@@ -7,13 +7,13 @@ description: For developers who have only a frontend — Shopify, Webflow, plain
 
 In frontend-only mode, Gennoctua's servers handle everything on the backend for you:
 - Token generation
-- Proxying to HyperPersona
+- Proxying to HP
 - API key management
 
 You just need a **brand key** (`gn_pk_...`) from Gennoctua.
 
 ```
-Browser (SDK) → Gennoctua Backend → HyperPersona AI
+Browser (SDK) → Gennoctua Backend → HP AI
 ```
 
 ---
@@ -287,7 +287,7 @@ Add to your product page template (`sections/product.liquid` or similar):
     User photos must have clear, front-facing faces. Ensure good lighting. At least one photo required.
   </Accordion>
   <Accordion title='"Personalization timed out"'>
-    HyperPersona may be under load — retry. Check your internet connection.
+    HP may be under load — retry. Check your internet connection.
   </Accordion>
   <Accordion title="Try-on result looks wrong">
     Make sure `productType` matches the actual product. Use a clean, white-background product image for best results.

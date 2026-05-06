@@ -105,7 +105,7 @@ case "RATE_LIMITED_CLIENT":
 
 **Causes:**
 - Too many requests from this IP or brand
-- HyperPersona capacity limit reached
+- HP capacity limit reached
 
 **How to handle:**
 ```ts
@@ -121,11 +121,11 @@ case "RATE_LIMITED_SERVER":
 | Property | Value |
 |---|---|
 | Recoverable | ✅ Yes — retry |
-| When | HyperPersona returned a FAILED status |
+| When | HP returned a FAILED status |
 
 **Causes:**
 - AI generation failed (no face detected in user photo, unusual image format)
-- Upstream HyperPersona error
+- Upstream HP error
 - Product image URL unreachable
 
 **How to handle:**
@@ -148,7 +148,7 @@ case "JOB_FAILED":
 | When | Generation exceeded `pollMaxAttempts × pollIntervalMs` (default: 3 minutes) |
 
 **Causes:**
-- HyperPersona is under heavy load
+- HP is under heavy load
 - Network connectivity issue mid-generation
 
 **How to handle:**

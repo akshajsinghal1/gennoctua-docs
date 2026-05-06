@@ -65,14 +65,14 @@ description: Frequently asked questions about the Gennoctua SDK.
 
 <AccordionGroup>
   <Accordion title="Are user photos stored on your servers?">
-    No. Photos are processed entirely in the browser using local AI models. Only the selected profile photo is sent to HyperPersona for AI generation — it is not stored on Gennoctua's servers.
+    No. Photos are processed entirely in the browser using local AI models. Only the selected profile photo is sent to HP for AI generation — it is not stored on Gennoctua's servers.
   </Accordion>
 
   <Accordion title="Is it safe to put my brand key in frontend code?">
-    Yes. Brand keys (`gn_pk_...`) can only be used to fetch short-lived JWT tokens. They cannot directly call HyperPersona. If a key is leaked, you can deactivate it instantly.
+    Yes. Brand keys (`gn_pk_...`) can only be used to fetch short-lived JWT tokens. They cannot directly call HP. If a key is leaked, you can deactivate it instantly.
   </Accordion>
 
-  <Accordion title="How are HyperPersona API keys protected?">
+  <Accordion title="How are HP API keys protected?">
     In both modes, HP API keys live on the backend only — never in the browser. In frontend-only mode, the key is stored in Gennoctua's database. In full-stack mode, it's in the brand's `.env` file.
   </Accordion>
 
@@ -95,7 +95,7 @@ description: Frequently asked questions about the Gennoctua SDK.
   </Accordion>
 
   <Accordion title="Why is the try-on result image slow to display?">
-    The generated image is served directly from HyperPersona's GCS bucket without a CDN. Download times can be 1–3 seconds depending on location. This is a known bottleneck — a CDN in front of GCS would reduce this to under 300ms.
+    The generated image is served directly from HP's GCS bucket without a CDN. Download times can be 1–3 seconds depending on location. This is a known bottleneck — a CDN in front of GCS would reduce this to under 300ms.
   </Accordion>
 
   <Accordion title="Does caching help?">
@@ -119,7 +119,7 @@ description: Frequently asked questions about the Gennoctua SDK.
   </Accordion>
 
   <Accordion title="What happens if the product image URL becomes unreachable?">
-    The job will fail on HyperPersona's side with a `JOB_FAILED` error. Make sure your product image URLs are publicly accessible and don't require authentication.
+    The job will fail on HP's side with a `JOB_FAILED` error. Make sure your product image URLs are publicly accessible and don't require authentication.
   </Accordion>
 
   <Accordion title="What happens if the user loses internet mid-generation?">
@@ -141,11 +141,11 @@ description: Frequently asked questions about the Gennoctua SDK.
 
 <AccordionGroup>
   <Accordion title="How is usage tracked?">
-    Usage is tracked per brand's HyperPersona API key. Each try-on job consumes one unit of quota. Check your HyperPersona dashboard for usage stats.
+    Usage is tracked per brand's HP API key. Each try-on job consumes one unit of quota. Check your HP dashboard for usage stats.
   </Accordion>
 
   <Accordion title="Are cached results billed?">
-    No. Cache hits return instantly from the browser and don't submit a new job to HyperPersona. You're only billed for new generations.
+    No. Cache hits return instantly from the browser and don't submit a new job to HP. You're only billed for new generations.
   </Accordion>
 
   <Accordion title="Can I limit how many try-ons a user can do?">

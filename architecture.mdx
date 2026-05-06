@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: How the SDK, Gennoctua backend, and HyperPersona AI fit together.
+description: How the SDK, Gennoctua backend, and HP AI fit together.
 ---
 
 ## System Overview
@@ -34,7 +34,7 @@ description: How the SDK, Gennoctua backend, and HyperPersona AI fit together.
                         │ HTTPS + API Key
                         ▼
            ┌─────────────────────────┐
-           │      HyperPersona AI    │
+           │      HP AI    │
            │   (AI try-on engine)    │
            └─────────────────────────┘
 ```
@@ -52,7 +52,7 @@ Used by brands with no backend (Shopify, Webflow, plain HTML).
 2. SDK calls POST /auth/token with publicKey
 3. Gennoctua validates key → returns 1hr JWT
 4. SDK uses JWT to call /api/tryon/submit and /api/tryon/status
-5. Gennoctua looks up brand's HP API key → proxies to HyperPersona
+5. Gennoctua looks up brand's HP API key → proxies to HP
 ```
 
 ```
@@ -68,13 +68,13 @@ Browser SDK
     │         ↓
     │    Gennoctua Backend
     │         │ validates JWT, looks up hp_api_key
-    │         └─── forwards to HyperPersona (X-API-Key: hpk_...)
+    │         └─── forwards to HP (X-API-Key: hpk_...)
     │
     └─── GET /api/tryon/status/:jobId (Bearer token)
               ↓
          Gennoctua Backend
               │ validates JWT, looks up hp_api_key
-              └─── streams SSE from HyperPersona back to browser
+              └─── streams SSE from HP back to browser
 ```
 
 ### Path B — Full-Stack (brand's own backend)
@@ -86,7 +86,7 @@ Used by brands that have their own Node.js, Next.js, Express, etc. backend.
 2. Brand builds token endpoint (POST /auth/tryon-token)
 3. Brand builds proxy endpoints (POST + GET /api/tryon/...)
 4. SDK calls brand's own backend with JWT
-5. Brand's backend forwards to HyperPersona
+5. Brand's backend forwards to HP
 ```
 
 ```
@@ -102,11 +102,11 @@ Browser SDK
     │         ↓
     │    Brand's Backend
     │         │ validates JWT, uses HP_API_KEY from .env
-    │         └─── forwards to HyperPersona
+    │         └─── forwards to HP
     │
     └─── GET /api/tryon/status/:jobId (Bearer token)
               ↓
-         Brand's Backend → streams SSE from HyperPersona
+         Brand's Backend → streams SSE from HP
 ```
 
 ---
@@ -119,10 +119,10 @@ Browser SDK
 | Pose scoring | **Browser** (WebAssembly) | Scores body poses for best photo selection |
 | Photo selection | **Browser** | Picks best male/female/child profile photo |
 | Token generation | **Backend** (Gennoctua or brand) | Issues short-lived JWTs |
-| Job submission | **Backend** (proxy) | Forwards multipart form to HyperPersona |
+| Job submission | **Backend** (proxy) | Forwards multipart form to HP |
 | SSE streaming | **Backend** (proxy) | Streams job status back to browser |
 | Result caching | **Browser** (IndexedDB) | Caches try-on results for 7 days |
-| AI generation | **HyperPersona** | Generates the try-on image |
+| AI generation | **HP** | Generates the try-on image |
 
 ---
 
@@ -154,9 +154,9 @@ Browser SDK
 
 ---
 
-## HyperPersona API
+## HP API
 
-HyperPersona is the AI backend that generates the try-on images. Gennoctua manages the relationship with HyperPersona — brands never interact with it directly.
+HP is the AI backend that generates the try-on images. Gennoctua manages the relationship with HP — brands never interact with it directly.
 
 | Endpoint | Method | Purpose |
 |---|---|---|
@@ -178,6 +178,6 @@ The SDK automatically routes to the correct endpoint based on `productType`.
 |---|---|
 | HP API key exposed in browser | Key lives on backend only, never sent to browser |
 | Stolen JWT used to make requests | JWTs expire in 1hr, rate limiting caps abuse |
-| Brand key leaked | Only gets JWTs, cannot directly call HyperPersona |
+| Brand key leaked | Only gets JWTs, cannot directly call HP |
 | Excessive requests (abuse) | Client-side + server-side rate limiting |
 | Expired token | SDK auto-refreshes in PublicKey mode, `getToken` called again in proxy mode |

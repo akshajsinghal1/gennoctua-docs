@@ -7,13 +7,13 @@
 ## Overview
 
 In full-stack mode:
-- Your **backend** holds the HyperPersona API key (never exposed to the browser)
+- Your **backend** holds the HP API key (never exposed to the browser)
 - Your **backend** generates short-lived session tokens (1hr JWT)
 - Your **frontend** uses the SDK with those tokens
-- The SDK sends requests to your backend proxy, which forwards to HyperPersona
+- The SDK sends requests to your backend proxy, which forwards to HP
 
 ```
-Browser (SDK) → Your Backend Proxy → HyperPersona AI
+Browser (SDK) → Your Backend Proxy → HP AI
 ```
 
 ---
@@ -145,7 +145,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Invalid token" });
   }
 
-  // Forward to HyperPersona
+  // Forward to HP
   const response = await fetch(
     "https://hyperpersona-api-914497143112.us-central1.run.app/api/tryon/submit",
     {
@@ -317,7 +317,7 @@ document.getElementById("tryOnBtn").addEventListener("click", async () => {
 - Make sure CORS is configured on your backend (allow your frontend origin)
 
 **"Personalization timed out"**
-- HyperPersona may be under load — retry
+- HP may be under load — retry
 - Increase `pollMaxAttempts` in config if needed
 
 **Next.js Turbopack issue**
