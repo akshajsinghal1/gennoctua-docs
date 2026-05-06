@@ -28,11 +28,23 @@ description: AI-powered virtual try-on SDK for fashion brands. Drop it into any 
 
 ## How it works
 
-```
-User uploads photos → SDK picks the best one automatically
-User clicks "Try On" → AI generates personalized image in ~20 seconds
-Brand shows the result → User sees themselves wearing the product
-```
+<Steps>
+  <Step title="Install the SDK">
+    Add via npm for React/Vue/Vite projects, or use the CDN script tag for plain HTML, Shopify, and Webflow.
+  </Step>
+  <Step title="Initialize with your credentials">
+    Use a brand key (frontend-only) or your own backend proxy (full-stack). See [Which integration should I use?](/integration/choose)
+  </Step>
+  <Step title="Let shoppers upload photos">
+    Call `sdk.ingestImages()` — the SDK automatically picks the best photo using on-device AI.
+  </Step>
+  <Step title="Run the try-on">
+    Call `sdk.personalize()` with a product image URL and type — the AI generates the result in ~20 seconds.
+  </Step>
+  <Step title="Show the result">
+    Display the returned image URL however you like — modal, side-by-side, or inline on the product page.
+  </Step>
+</Steps>
 
 ---
 
