@@ -1,0 +1,300 @@
+---
+title: Error Codes
+description: Complete reference for all SDK error codes, causes, and how to handle them.
+---
+
+## Overview
+
+The SDK throws `SDKError` instances with a `code` property. Always check `err.code` to handle errors correctly.
+
+```ts
+import { SDKError } from "@gennoctua/personalize-core";
+
+try {
+  const result = await sdk.personalize({ imageUrl, productType });
+} catch (err) {
+  if (err instanceof SDKError) {
+    console.log(err.code);        // e.g. "JOB_TIMEOUT"
+    console.log(err.message);     // human-readable description
+    console.log(err.recoverable); // true = user can retry
+    console.log(err.context);     // additional debug info
+  }
+}
+```
+
+---
+
+## Error Code Reference
+
+### `AUTH_INVALID`
+
+| Property | Value |
+|---|---|
+| Recoverable | ❌ No |
+| When | Token was rejected by the server |
+
+**Causes:**
+- JWT has expired (tokens last 1 hour)
+- JWT was tampered with or signed with wrong secret
+- Brand key (`gn_pk_...`) has been deactivated
+
+**How to handle:**
+```ts
+case "AUTH_INVALID":
+  // In frontend-only mode: SDK will auto-refresh the token next call
+  // In full-stack mode: call getToken() to get a fresh token
+  await sdk.personalize({ imageUrl, productType }); // retry
+  break;
+```
+
+---
+
+### `CONFIG_ERROR`
+
+| Property | Value |
+|---|---|
+| Recoverable | ❌ No |
+| When | Invalid SDK configuration |
+
+**Causes:**
+- Missing required `auth` config
+- `proxyUrl` is not a valid URL
+- `publicKey` is missing or malformed
+- `pollIntervalMs` is zero or negative
+
+**How to handle:**
+```ts
+case "CONFIG_ERROR":
+  // This is a developer error — check your Personalize.init() config
+  console.error("Fix your SDK config:", err.message);
+  break;
+```
+
+---
+
+### `RATE_LIMITED_CLIENT`
+
+| Property | Value |
+|---|---|
+| Recoverable | ✅ Yes — wait and retry |
+| When | Client-side rate limiter blocked the request |
+
+**Causes:**
+- User clicked Try On too quickly (within `cooldownMs`)
+- User exceeded `maxPerSession` or `maxPerProduct` limit
+
+**How to handle:**
+```ts
+case "RATE_LIMITED_CLIENT":
+  showMessage("Please wait a moment before trying again.");
+  // Re-enable button after cooldown
+  setTimeout(() => {
+    tryOnButton.disabled = false;
+  }, 10000);
+  break;
+```
+
+---
+
+### `RATE_LIMITED_SERVER`
+
+| Property | Value |
+|---|---|
+| Recoverable | ✅ Yes — wait and retry |
+| When | Server-side rate limit was hit |
+
+**Causes:**
+- Too many requests from this IP or brand
+- HyperPersona capacity limit reached
+
+**How to handle:**
+```ts
+case "RATE_LIMITED_SERVER":
+  showMessage("Our servers are busy. Please try again in a minute.");
+  break;
+```
+
+---
+
+### `JOB_FAILED`
+
+| Property | Value |
+|---|---|
+| Recoverable | ✅ Yes — retry |
+| When | HyperPersona returned a FAILED status |
+
+**Causes:**
+- AI generation failed (no face detected in user photo, unusual image format)
+- Upstream HyperPersona error
+- Product image URL unreachable
+
+**How to handle:**
+```ts
+case "JOB_FAILED":
+  showMessage("Try-on failed. Try a different photo or product image.");
+  tryOnButton.disabled = false;
+  break;
+```
+
+**Common fix:** Ensure the user's photo has a clear, front-facing face and the product image URL is publicly accessible.
+
+---
+
+### `JOB_TIMEOUT`
+
+| Property | Value |
+|---|---|
+| Recoverable | ✅ Yes — retry |
+| When | Generation exceeded `pollMaxAttempts × pollIntervalMs` (default: 3 minutes) |
+
+**Causes:**
+- HyperPersona is under heavy load
+- Network connectivity issue mid-generation
+
+**How to handle:**
+```ts
+case "JOB_TIMEOUT":
+  showMessage("Generation is taking longer than expected. Please try again.");
+  tryOnButton.disabled = false;
+  break;
+```
+
+**Tip:** Increase `pollMaxAttempts` in config if timeouts are frequent:
+```ts
+pollIntervalMs: 1500,
+pollMaxAttempts: 200, // 5 minutes instead of 3
+```
+
+---
+
+### `NETWORK_ERROR`
+
+| Property | Value |
+|---|---|
+| Recoverable | ✅ Yes — check connection and retry |
+| When | Network request failed |
+
+**Causes:**
+- User lost internet connection
+- Backend server is down
+- CORS misconfiguration (in full-stack mode)
+
+**How to handle:**
+```ts
+case "NETWORK_ERROR":
+  showMessage("Network error. Check your connection and try again.");
+  break;
+```
+
+---
+
+### `SELECTION_FAILED`
+
+| Property | Value |
+|---|---|
+| Recoverable | ✅ Yes — try different photos |
+| When | Photo processing failed during `ingestImages()` |
+
+**Causes:**
+- Corrupt or unreadable image files
+- Browser ran out of memory processing many large photos
+- face-api.js models failed to load
+
+**How to handle:**
+```ts
+case "SELECTION_FAILED":
+  showMessage("Could not process photos. Try uploading different ones.");
+  break;
+```
+
+---
+
+## Handling All Errors
+
+A complete error handler:
+
+```ts
+import { SDKError } from "@gennoctua/personalize-core";
+
+async function runTryOn() {
+  try {
+    const result = await sdk.personalize({
+      imageUrl: productImageUrl,
+      productType: "sunglasses",
+    });
+    showResult(result.imageUrl);
+  } catch (err) {
+    if (!(err instanceof SDKError)) {
+      // Unexpected error
+      showMessage("An unexpected error occurred.");
+      console.error(err);
+      return;
+    }
+
+    switch (err.code) {
+      case "AUTH_INVALID":
+        showMessage("Session expired. Refreshing...");
+        // SDK auto-retries in publicKey mode
+        break;
+
+      case "RATE_LIMITED_CLIENT":
+        showMessage("Please wait before trying again.");
+        setTimeout(() => enableTryOnButton(), 10000);
+        break;
+
+      case "RATE_LIMITED_SERVER":
+        showMessage("Servers are busy. Try again in a minute.");
+        break;
+
+      case "JOB_FAILED":
+        showMessage("Generation failed. Try a different photo.");
+        enableTryOnButton();
+        break;
+
+      case "JOB_TIMEOUT":
+        showMessage("Taking too long. Please try again.");
+        enableTryOnButton();
+        break;
+
+      case "NETWORK_ERROR":
+        showMessage("Network error. Check your connection.");
+        enableTryOnButton();
+        break;
+
+      default:
+        showMessage("Something went wrong. Please try again.");
+        if (err.recoverable) enableTryOnButton();
+        break;
+    }
+  }
+}
+```
+
+---
+
+## Listening via Events
+
+Instead of try/catch, you can use the event bus:
+
+```ts
+sdk.on("personalization:failed", ({ error, code }) => {
+  handleError(code, error);
+});
+
+sdk.on("error", (err) => {
+  console.error("Unhandled SDK error:", err.code, err.message);
+});
+```
+
+---
+
+## `SDKError` Type
+
+```ts
+class SDKError extends Error {
+  code: string;         // one of the codes above
+  message: string;      // human-readable description
+  recoverable: boolean; // true if the user can retry
+  context?: unknown;    // additional debug info
+}
+```

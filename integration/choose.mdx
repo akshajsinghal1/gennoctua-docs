@@ -1,0 +1,86 @@
+---
+title: Which Integration Should I Use?
+description: Frontend-only vs full-stack — pick the right mode for your setup.
+---
+
+## Decision Guide
+
+<CardGroup cols={2}>
+  <Card title="Frontend-Only" icon="globe" href="/integration/frontend-only">
+    **Use this if you have no backend** — Shopify, Webflow, plain HTML, or any site where you can't run server-side code.
+  </Card>
+  <Card title="Full-Stack" icon="server" href="/integration/fullstack">
+    **Use this if you have a backend** — Next.js, React + Node, Vue + Express, Django, Rails, etc.
+  </Card>
+</CardGroup>
+
+---
+
+## Quick Comparison
+
+| | Frontend-Only | Full-Stack |
+|---|---|---|
+| Need a backend? | ❌ No | ✅ Yes |
+| Brand key needed? | ✅ `gn_pk_...` from Gennoctua | ❌ Not needed |
+| HP API key location | Gennoctua's DB | Your own `.env` |
+| Who proxies to HyperPersona? | Gennoctua backend | Your own backend |
+| Setup time | ~30 minutes | ~2-4 hours |
+| Works with Shopify? | ✅ | ❌ (no backend) |
+| Works with Webflow? | ✅ | ❌ (no backend) |
+| Works with Next.js? | ✅ | ✅ |
+| Works with plain HTML? | ✅ | ❌ |
+| Full control over proxy? | ❌ | ✅ |
+
+---
+
+## By Platform
+
+| Platform | Use |
+|---|---|
+| Shopify | Frontend-Only |
+| Webflow | Frontend-Only |
+| Plain HTML | Frontend-Only |
+| WordPress | Frontend-Only |
+| Next.js | Either (frontend-only is simpler) |
+| React + Node/Express | Full-Stack |
+| Vue + Express | Full-Stack |
+| Django + React | Full-Stack |
+| Rails + React | Full-Stack |
+
+---
+
+## If You're Not Sure
+
+**Use frontend-only.** It's simpler, requires no backend code, and works for most brands. You can always switch to full-stack later if you need more control.
+
+The only reason to use full-stack is if:
+- You need to gate try-on behind user authentication (only logged-in users can try on)
+- You want to add custom rate limiting or business logic
+- Your security policy requires all external API calls to go through your own servers
+
+---
+
+## SDK Config by Mode
+
+<CodeGroup>
+```ts Frontend-Only
+Personalize.init({
+  auth: {
+    publicKey: "gn_pk_yourbrand_xxx"
+  }
+})
+```
+
+```ts Full-Stack
+Personalize.init({
+  auth: {
+    proxyUrl: "https://yourbrand.com/api/tryon",
+    getToken: async () => {
+      const res = await fetch("/auth/tryon-token", { method: "POST" });
+      const data = await res.json();
+      return data.token;
+    }
+  }
+})
+```
+</CodeGroup>

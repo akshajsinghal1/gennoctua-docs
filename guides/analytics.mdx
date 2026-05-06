@@ -1,0 +1,317 @@
+---
+title: Analytics
+description: How to track try-on usage, conversions, and performance using the SDK's analytics events.
+---
+
+## Overview
+
+The SDK fires analytics events for every key action. You receive them via the `onEvent` callback and can forward them to any analytics platform — Mixpanel, Amplitude, Segment, your own backend, etc.
+
+No data is sent anywhere by default. **You control where events go.**
+
+---
+
+## Setup
+
+```ts
+Personalize.init({
+  analytics: {
+    onEvent: (event) => {
+      // Send to your analytics platform
+      mixpanel.track(event.eventName, event);
+    }
+  }
+})
+```
+
+---
+
+## The `AnalyticsEvent` Type
+
+Every event has the same base structure:
+
+```ts
+type AnalyticsEvent = {
+  eventName: string;           // event name (see list below)
+  orgId: string;               // your brand/org identifier
+  sessionId: string;           // unique per browser session
+  anonymousUserId: string;     // stable per browser (localStorage)
+  timestamp: string;           // ISO 8601
+
+  product?: {
+    productId?: string;        // passed in sdk.personalize({ productId })
+    productType?: ProductType;
+    productImageHash?: string;
+    pageUrl?: string;
+  };
+
+  personalization?: {
+    jobId?: string;
+    cacheHit?: boolean;
+    status?: string;
+  };
+
+  metadata?: Record<string, unknown>;  // event-specific extra data
+};
+```
+
+---
+
+## Event Reference
+
+### `upload_started`
+
+Fired when `sdk.ingestImages()` is called.
+
+```ts
+{
+  eventName: "upload_started",
+  metadata: {
+    fileCount: number,
+  }
+}
+```
+
+---
+
+### `profile_pipeline_progress`
+
+Fired multiple times during photo processing with the current stage.
+
+```ts
+{
+  eventName: "profile_pipeline_progress",
+  metadata: {
+    message: string,  // e.g. "Scanning faces 3 of 14..."
+    step: number,
+    total: number,
+  }
+}
+```
+
+---
+
+### `profile_selected`
+
+Fired when profile selection completes successfully.
+
+```ts
+{
+  eventName: "profile_selected",
+  metadata: {
+    latencyMs: number,
+    availableCategories: UserImageCategory[],
+    totalUploaded: number,
+    totalSelected: number,
+  }
+}
+```
+
+Use this to measure how long photo processing takes and what gender/type profiles are being uploaded.
+
+---
+
+### `job_submit_start`
+
+Fired just before the HTTP request to submit a try-on job.
+
+```ts
+{
+  eventName: "job_submit_start",
+  product: {
+    productType: ProductType,
+    productImageHash: string,
+  }
+}
+```
+
+---
+
+### `job_submit_ok`
+
+Fired when job submission succeeds and a `job_id` is received.
+
+```ts
+{
+  eventName: "job_submit_ok",
+  personalization: {
+    jobId: string,
+  },
+  metadata: {
+    submitMs: number,  // time from click to job_id received
+  }
+}
+```
+
+---
+
+### `job_poll_start`
+
+Fired when SSE polling begins for a job.
+
+```ts
+{
+  eventName: "job_poll_start",
+  personalization: {
+    jobId: string,
+  }
+}
+```
+
+---
+
+### `job_complete`
+
+Fired when the try-on job completes successfully.
+
+```ts
+{
+  eventName: "job_complete",
+  personalization: {
+    jobId: string,
+    cacheHit: false,
+  },
+  metadata: {
+    pollCompleteMs: number,  // time from first poll to completion
+    totalMs: number,         // total time from submit to completion
+  }
+}
+```
+
+---
+
+### `first_tryon_generated`
+
+Fired the first time a try-on image URL is received in a session.
+
+```ts
+{
+  eventName: "first_tryon_generated",
+  personalization: {
+    jobId: string,
+  },
+  metadata: {
+    latencyMs: number,  // time from Try On click to first image URL
+  }
+}
+```
+
+Use this to measure **time to first result** — the most important UX metric.
+
+---
+
+### `last_tryon_generated`
+
+Fired when all pending try-on jobs in the current batch are complete.
+
+```ts
+{
+  eventName: "last_tryon_generated",
+  metadata: {
+    latencyMs: number,  // time from upload to all images done
+  }
+}
+```
+
+---
+
+### `tryon_image_asset_loaded`
+
+Fired when the try-on image has fully loaded in the browser (the `<img>` element fires `onload`).
+
+```ts
+{
+  eventName: "tryon_image_asset_loaded",
+  metadata: {
+    imageLoadMs: number,  // time from URL received to image displayed
+  }
+}
+```
+
+Use this to track image download performance. High values indicate a CDN would help.
+
+---
+
+## Recommended Metrics to Track
+
+| Metric | How to calculate | Why it matters |
+|---|---|---|
+| **Try-on start rate** | `job_submit_start` / page views | Are users clicking Try On? |
+| **Completion rate** | `job_complete` / `job_submit_start` | Are try-ons succeeding? |
+| **Cache hit rate** | `cacheHit: true` / total completions | Are repeat users getting instant results? |
+| **Time to first image** | `first_tryon_generated.latencyMs` | Core UX performance |
+| **Profile selection time** | `profile_selected.latencyMs` | Photo upload experience |
+| **Image load time** | `tryon_image_asset_loaded.imageLoadMs` | Delivery performance |
+
+---
+
+## Integration Examples
+
+### Mixpanel
+
+```ts
+analytics: {
+  onEvent: (event) => {
+    mixpanel.track(event.eventName, {
+      distinct_id: event.anonymousUserId,
+      session_id: event.sessionId,
+      product_type: event.product?.productType,
+      product_id: event.product?.productId,
+      job_id: event.personalization?.jobId,
+      cache_hit: event.personalization?.cacheHit,
+      ...event.metadata,
+    });
+  }
+}
+```
+
+### Amplitude
+
+```ts
+analytics: {
+  onEvent: (event) => {
+    amplitude.track(event.eventName, {
+      ...event.metadata,
+      productType: event.product?.productType,
+      jobId: event.personalization?.jobId,
+    });
+  }
+}
+```
+
+### Your Own Backend
+
+```ts
+analytics: {
+  onEvent: (event) => {
+    // Fire and forget — never let analytics break the try-on
+    fetch("/analytics/tryon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    }).catch(() => {});
+  }
+}
+```
+
+### Console (debugging)
+
+```ts
+analytics: {
+  onEvent: (event) => {
+    console.log(`[tryon] ${event.eventName}`, event.metadata);
+  }
+}
+```
+
+---
+
+## Disabling Analytics
+
+```ts
+analytics: {
+  enabled: false,
+}
+```
+
+No `onEvent` calls will be made.

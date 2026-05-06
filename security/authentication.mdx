@@ -1,0 +1,211 @@
+---
+title: Authentication
+description: How JWT-based authentication works in both integration modes.
+---
+
+## Overview
+
+The SDK uses **short-lived JWTs (1 hour)** for all requests to the backend. JWTs are issued by either:
+
+- **Gennoctua backend** — for frontend-only brands using a `gn_pk_...` brand key
+- **Brand's own backend** — for full-stack brands managing their own proxy
+
+---
+
+## Frontend-Only Auth Flow
+
+```
+1. SDK calls POST /auth/token with publicKey: "gn_pk_..."
+2. Gennoctua validates the brand key in the database
+3. Gennoctua returns a 1hr JWT signed with its secret
+4. SDK caches the JWT in memory
+5. SDK attaches JWT as "Authorization: Bearer <token>" to all requests
+6. When JWT expires, SDK automatically fetches a new one
+```
+
+### Token Request
+
+```http
+POST https://api.gennoctua.com/auth/token
+Content-Type: application/json
+
+{
+  "publicKey": "gn_pk_mauijim_xxx"
+}
+```
+
+### Token Response
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 3600
+}
+```
+
+### JWT Payload
+
+```json
+{
+  "brandKey": "gn_pk_mauijim_xxx",
+  "brandName": "Maui Jim",
+  "iat": 1714000000,
+  "exp": 1714003600
+}
+```
+
+### SDK Config
+
+```ts
+Personalize.init({
+  auth: {
+    publicKey: "gn_pk_mauijim_xxx",
+    gennoctuaUrl: "https://api.gennoctua.com"  // default, can omit
+  }
+})
+```
+
+---
+
+## Full-Stack Auth Flow
+
+```
+1. Your backend generates a JWT using your JWT_SECRET
+2. Your frontend calls your token endpoint to get the JWT
+3. SDK uses the JWT to call your proxy endpoints
+4. Your proxy validates the JWT and forwards to HyperPersona with your HP API key
+```
+
+### Your Token Endpoint
+
+```ts
+// POST /auth/tryon-token
+import jwt from "jsonwebtoken";
+
+const token = jwt.sign(
+  { purpose: "tryon" },
+  process.env.JWT_SECRET,
+  { expiresIn: "1h" }
+);
+
+res.json({ token, expiresIn: 3600 });
+```
+
+### SDK Config
+
+```ts
+Personalize.init({
+  auth: {
+    proxyUrl: "https://yourbrand.com/api/tryon",
+    getToken: async () => {
+      const res = await fetch("/auth/tryon-token", { method: "POST" });
+      const data = await res.json();
+      return data.token;  // must return the token string
+    }
+  }
+})
+```
+
+### Your Proxy Validation
+
+```ts
+import jwt from "jsonwebtoken";
+
+function requireToken(req, res, next) {
+  const token = (req.headers.authorization ?? "").replace("Bearer ", "");
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+```
+
+---
+
+## Request Headers
+
+Every SDK request to the backend includes:
+
+```http
+Authorization: Bearer <jwt>
+X-SDK-Version: 1.0.0
+Content-Type: multipart/form-data  (submit)
+                or
+Accept: text/event-stream          (status)
+```
+
+---
+
+## JWT Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Short expiry" icon="clock">
+    Keep JWTs at 1 hour or less. Shorter = less damage if a token is stolen.
+  </Card>
+  <Card title="Strong secret" icon="key">
+    Use at least 32 random bytes for your JWT_SECRET. Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+  </Card>
+  <Card title="No sensitive data in payload" icon="shield">
+    Don't put HP API keys or user PII in the JWT payload. It's base64-encoded, not encrypted.
+  </Card>
+  <Card title="Validate on every request" icon="check">
+    Always verify the JWT on every proxy request. Never cache validation results.
+  </Card>
+</CardGroup>
+
+---
+
+## Token Expiry Handling
+
+### Frontend-Only Mode
+
+The SDK caches the JWT in memory and tracks expiry. **Before each request**, it checks if the token expires within the next 5 minutes. If so, it fetches a fresh token automatically.
+
+You don't need to handle token expiry manually.
+
+### Full-Stack Mode
+
+The SDK calls your `getToken()` function before each request. It does **not** cache the result — your function is responsible for caching and refreshing.
+
+**Recommended implementation:**
+
+```ts
+let cachedToken: string | null = null;
+let tokenExpiry: number = 0;
+
+async function getToken(): Promise<string> {
+  // Return cached token if still valid (with 5 min buffer)
+  if (cachedToken && Date.now() < tokenExpiry - 300000) {
+    return cachedToken;
+  }
+
+  // Fetch fresh token
+  const res = await fetch("/auth/tryon-token", { method: "POST" });
+  const data = await res.json();
+  cachedToken = data.token;
+  tokenExpiry = Date.now() + data.expiresIn * 1000;
+  return cachedToken;
+}
+
+Personalize.init({
+  auth: {
+    proxyUrl: "/api/tryon",
+    getToken,
+  }
+});
+```
+
+---
+
+## Deactivating a Brand
+
+If a brand key is compromised, deactivate it immediately via the Admin API:
+
+```bash
+curl -X DELETE https://api.gennoctua.com/admin/brands/gn_pk_compromised_xxx \
+  -H "x-admin-secret: YOUR_ADMIN_SECRET"
+```
+
+All subsequent token requests with that brand key will return `401 Invalid or inactive brand key`.

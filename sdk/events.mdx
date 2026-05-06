@@ -1,0 +1,399 @@
+---
+title: Events Reference
+description: Complete reference for all SDK events, payloads, and when they fire.
+---
+
+## Overview
+
+The SDK emits events throughout the try-on lifecycle. Subscribe with `sdk.on()`.
+
+```ts
+sdk.on("personalization:completed", (data) => {
+  console.log(data.imageUrl);
+});
+```
+
+Events are also forwarded to your `analytics.onEvent` callback if configured. See [Analytics](/guides/analytics).
+
+---
+
+## Subscribing to Events
+
+```ts
+// Subscribe
+sdk.on("personalization:completed", handler);
+
+// Unsubscribe
+sdk.off("personalization:completed", handler);
+
+// One-time (auto-unsubscribes after first call)
+sdk.once("personalization:completed", handler);
+```
+
+---
+
+## Upload & Selection Events
+
+Fired during `sdk.ingestImages()`.
+
+### `upload:started`
+
+Fired when `ingestImages()` is called.
+
+```ts
+sdk.on("upload:started", ({ fileCount }) => {
+  console.log(`Processing ${fileCount} files...`);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `fileCount` | `number` | Total number of files passed in |
+
+---
+
+### `upload:completed`
+
+Fired after all files have been validated (before face detection starts).
+
+```ts
+sdk.on("upload:completed", ({ fileCount, validCount }) => {
+  console.log(`${validCount} of ${fileCount} files are valid images`);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `fileCount` | `number` | Total files passed in |
+| `validCount` | `number` | Files that passed image validation |
+
+---
+
+### `upload:failed`
+
+Fired if the upload/processing step throws an error.
+
+```ts
+sdk.on("upload:failed", ({ error }) => {
+  console.error("Upload failed:", error);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `error` | `string` | Error message |
+
+---
+
+### `selection:started`
+
+Fired when face detection and profile selection begins.
+
+```ts
+sdk.on("selection:started", ({ fileCount }) => {
+  showProgressBar(fileCount);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `fileCount` | `number` | Number of valid files being processed |
+
+---
+
+### `selection:completed`
+
+Fired when profile selection is done.
+
+```ts
+sdk.on("selection:completed", (summary) => {
+  console.log("Available:", summary.availableCategories);
+  console.log("Missing:", summary.missingCategories);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `availableCategories` | `UserImageCategory[]` | Profile types found |
+| `missingCategories` | `UserImageCategory[]` | Profile types not found |
+| `totalUploaded` | `number` | Valid photos processed |
+| `totalSelected` | `number` | Profiles selected |
+
+---
+
+### `selection:failed`
+
+Fired if profile selection throws an error.
+
+```ts
+sdk.on("selection:failed", ({ error }) => {
+  showError("Could not process photos: " + error);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `error` | `string` | Error message |
+
+---
+
+## Personalization Events
+
+Fired during `sdk.personalize()`.
+
+### `personalization:requested`
+
+Fired immediately when `personalize()` is called.
+
+```ts
+sdk.on("personalization:requested", ({ productImageUrl }) => {
+  showLoadingSpinner();
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `productImageUrl` | `string` | The product image URL passed in |
+
+---
+
+### `personalization:cache_hit`
+
+Fired when a cached result is returned instantly (no AI generation needed).
+
+```ts
+sdk.on("personalization:cache_hit", (result) => {
+  console.log("Instant result from cache:", result.imageUrl);
+  showResult(result.imageUrl);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `imageUrl` | `string` | Cached try-on image URL |
+| `cacheHit` | `boolean` | Always `true` |
+| `jobId` | `string` | Cache key used as job ID |
+
+---
+
+### `personalization:job_created`
+
+Fired when a job is successfully submitted to HyperPersona.
+
+```ts
+sdk.on("personalization:job_created", ({ jobId }) => {
+  console.log("Job submitted:", jobId);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `jobId` | `string` | HyperPersona job ID |
+
+---
+
+### `personalization:polling_started`
+
+Fired when the SSE stream opens and polling begins.
+
+```ts
+sdk.on("personalization:polling_started", ({ jobId }) => {
+  console.log("Waiting for result...", jobId);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `jobId` | `string` | HyperPersona job ID |
+
+---
+
+### `personalization:completed`
+
+Fired when the try-on image is ready.
+
+```ts
+sdk.on("personalization:completed", (result) => {
+  document.getElementById("result").src = result.imageUrl;
+  document.getElementById("result").style.display = "block";
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `imageUrl` | `string` | Try-on image URL |
+| `cacheHit` | `boolean` | `false` (fresh generation) |
+| `jobId` | `string` | HyperPersona job ID |
+
+---
+
+### `personalization:failed`
+
+Fired when the try-on job fails.
+
+```ts
+sdk.on("personalization:failed", ({ error, code }) => {
+  showError("Try-on failed. Please try again.");
+  console.error(code, error);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `error` | `string` | Error message |
+| `code` | `string` | Error code (see [Error Codes](/sdk/error-codes)) |
+
+---
+
+### `personalization:cancelled`
+
+Fired when the request is cancelled via `AbortController`.
+
+```ts
+sdk.on("personalization:cancelled", ({ jobId }) => {
+  hideLoadingSpinner();
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `jobId` | `string \| undefined` | Job ID if submission had already happened |
+
+---
+
+### `personalization:rate_limited`
+
+Fired when a request is blocked by the client-side rate limiter.
+
+```ts
+sdk.on("personalization:rate_limited", ({ reason }) => {
+  showMessage("Please wait a moment before trying again.");
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `reason` | `string` | Why the request was blocked |
+
+---
+
+## Product Events
+
+### `product:resolved`
+
+Fired when the SDK successfully detects the product context from the page.
+
+```ts
+sdk.on("product:resolved", (context) => {
+  console.log("Detected product:", context.productType);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `productType` | `ProductType` | Detected product type |
+| `imageUrl` | `string \| undefined` | Detected product image URL |
+
+---
+
+### `product:failed`
+
+Fired when product context detection fails.
+
+```ts
+sdk.on("product:failed", ({ error }) => {
+  console.warn("Could not detect product:", error);
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `error` | `string` | Why detection failed |
+
+---
+
+## Eligibility Events
+
+### `eligibility:eligible`
+
+Fired when a try-on is possible for the current product type.
+
+```ts
+sdk.on("eligibility:eligible", (result) => {
+  showTryOnButton();
+});
+```
+
+---
+
+### `eligibility:ineligible`
+
+Fired when a try-on cannot proceed.
+
+```ts
+sdk.on("eligibility:ineligible", (result) => {
+  if (result.reason === "REQUIRED_USER_IMAGE_MISSING") {
+    showUploadPrompt();
+  }
+});
+```
+
+---
+
+## Other Events
+
+### `view:changed`
+
+Fired when the user toggles between original and personalized view.
+
+```ts
+sdk.on("view:changed", ({ mode }) => {
+  console.log("Now showing:", mode); // "original" or "personalized"
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `mode` | `"original" \| "personalized"` | Which view is now active |
+
+---
+
+### `error`
+
+Fired for any unhandled SDK error.
+
+```ts
+sdk.on("error", (err) => {
+  console.error(err.code, err.message);
+  if (err.recoverable) {
+    showRetryButton();
+  }
+});
+```
+
+See [Error Codes](/sdk/error-codes) for the full `SDKError` reference.
+
+---
+
+## TypeScript: Full Event Map
+
+```ts
+import type { SDKEventMap, SDKEventName } from "@gennoctua/personalize-core";
+
+// Type-safe event subscription
+sdk.on("personalization:completed", (data: SDKEventMap["personalization:completed"]) => {
+  // data is fully typed
+});
+
+// All event names
+type AllEvents = SDKEventName;
+// "upload:started" | "upload:completed" | "upload:failed" |
+// "selection:started" | "selection:completed" | "selection:failed" |
+// "personalization:requested" | "personalization:cache_hit" |
+// "personalization:job_created" | "personalization:polling_started" |
+// "personalization:completed" | "personalization:failed" |
+// "personalization:cancelled" | "personalization:rate_limited" |
+// "product:resolved" | "product:failed" |
+// "eligibility:eligible" | "eligibility:ineligible" |
+// "view:changed" | "error"
+```

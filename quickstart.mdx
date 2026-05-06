@@ -1,0 +1,99 @@
+---
+title: Quickstart
+description: Add virtual try-on to your website in under 5 minutes.
+---
+
+## Pick your setup
+
+<CardGroup cols={2}>
+  <Card title="Frontend-Only" icon="globe" href="/integration/frontend-only">
+    No backend? Use a brand key from Gennoctua. Works with Shopify, Webflow, plain HTML, React.
+  </Card>
+  <Card title="Full-Stack" icon="server" href="/integration/fullstack">
+    Have a backend? Keep your API key server-side and proxy requests through your own endpoint.
+  </Card>
+</CardGroup>
+
+---
+
+## Fastest possible setup
+
+Add this to any HTML page and change the 3 values:
+
+```html
+<script src="https://cdn.gennoctua.com/personalize.min.global.js"></script>
+
+<input id="photos" type="file" multiple accept="image/*" webkitdirectory />
+<button id="tryOnBtn" disabled>✨ Try On</button>
+<p id="status"></p>
+<img id="result" style="display:none; max-width:500px" />
+
+<script>
+  const BRAND_KEY = "gn_pk_yourbrand_xxx";        // ← your brand key
+  const PRODUCT_IMAGE_URL = "https://...";          // ← product image URL
+  const PRODUCT_TYPE = "sunglasses";                // ← product type
+
+  let sdk;
+  window.Personalize.init({ auth: { publicKey: BRAND_KEY } })
+    .then(s => { sdk = s; });
+
+  document.getElementById("photos").addEventListener("change", async (e) => {
+    document.getElementById("status").textContent = "Reading your photos...";
+    const summary = await sdk.ingestImages(e.target.files, p => {
+      document.getElementById("status").textContent = p.message;
+    });
+    if (summary.availableCategories.length > 0) {
+      document.getElementById("status").textContent = "✓ Ready! Click Try On.";
+      document.getElementById("tryOnBtn").disabled = false;
+    } else {
+      document.getElementById("status").textContent = "Couldn't find a face. Try different photos.";
+    }
+  });
+
+  document.getElementById("tryOnBtn").addEventListener("click", async () => {
+    document.getElementById("status").textContent = "Generating (~20 seconds)...";
+    document.getElementById("tryOnBtn").disabled = true;
+    try {
+      const result = await sdk.personalize({
+        imageUrl: PRODUCT_IMAGE_URL,
+        productType: PRODUCT_TYPE
+      });
+      document.getElementById("result").src = result.imageUrl;
+      document.getElementById("result").style.display = "block";
+      document.getElementById("status").textContent = "Here's how it looks on you!";
+    } catch (err) {
+      document.getElementById("status").textContent = "Something went wrong. Try again.";
+      document.getElementById("tryOnBtn").disabled = false;
+    }
+  });
+</script>
+```
+
+---
+
+## What to change
+
+<Steps>
+  <Step title="Brand Key">
+    Replace `gn_pk_yourbrand_xxx` with your brand key from Gennoctua.
+  </Step>
+  <Step title="Product Image URL">
+    Replace with the URL of the product image on your page. Right-click the image → Copy Image Address.
+  </Step>
+  <Step title="Product Type">
+    Replace `"sunglasses"` with the correct type. See [Supported Products](/sdk/supported-products) for the full list.
+  </Step>
+</Steps>
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="code" href="/sdk/api-reference">
+    All methods, events, types, and error codes.
+  </Card>
+  <Card title="Supported Products" icon="tag" href="/sdk/supported-products">
+    All 17 supported product types.
+  </Card>
+</CardGroup>

@@ -1,0 +1,371 @@
+---
+title: API Reference
+description: Complete reference for all methods, events, types, and errors.
+---
+
+## Initialization
+
+### `Personalize.init(config)`
+
+Initializes the SDK. Returns a `PersonalizeSDK` instance.
+
+```ts
+const sdk = await Personalize.init(config: SDKConfig): Promise<PersonalizeSDK>
+```
+
+---
+
+## Methods
+
+### `sdk.ingestImages(files, onProgress?)`
+
+Processes uploaded photos. Runs face detection, gender classification, pose scoring, and selects the best profile photo(s).
+
+```ts
+sdk.ingestImages(
+  files: FileList,
+  onProgress?: (progress: SelectionProgress) => void
+): Promise<SelectionSummary>
+```
+
+**Parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `files` | `FileList` | Files from a file input element |
+| `onProgress` | `function` | Optional callback with progress updates |
+
+**SelectionProgress:**
+```ts
+{
+  message: string;  // human-readable status e.g. "Scanning faces 3 of 14..."
+  step: number;     // current step
+  total: number;    // total steps
+}
+```
+
+**Returns SelectionSummary:**
+```ts
+{
+  availableCategories: UserImageCategory[];
+  missingCategories: UserImageCategory[];
+  totalUploaded: number;
+  totalSelected: number;
+}
+```
+
+---
+
+### `sdk.personalize(opts)`
+
+Submits a try-on job and returns the result when complete.
+
+```ts
+sdk.personalize(opts: {
+  imageUrl: string;
+  productType: ProductType;
+  productId?: string;
+  abortSignal?: AbortSignal;
+}): Promise<PersonalizationResult>
+```
+
+**Parameters:**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `imageUrl` | `string` | ✅ | Product image URL |
+| `productType` | `ProductType` | ✅ | Type of product |
+| `productId` | `string` | — | Product ID for cache keying and analytics |
+| `abortSignal` | `AbortSignal` | — | Cancel the request |
+
+**Returns PersonalizationResult:**
+```ts
+{
+  imageUrl: string;   // URL of the personalized try-on image
+  cacheHit: boolean;  // true if returned from cache (instant)
+  jobId: string;      // HyperPersona job ID for debugging
+}
+```
+
+**Cancel a request:**
+```ts
+const controller = new AbortController();
+
+const resultPromise = sdk.personalize({
+  imageUrl,
+  productType: "sunglasses",
+  abortSignal: controller.signal
+});
+
+controller.abort();
+```
+
+---
+
+### `sdk.checkEligibility(productType?)`
+
+Check if a try-on can be performed for a given product type.
+
+```ts
+sdk.checkEligibility(productType?: ProductType): EligibilityResult
+```
+
+**Returns EligibilityResult:**
+```ts
+// Eligible
+{
+  eligible: true;
+  productType: ProductType;
+  requiredCategory: UserImageCategory;
+}
+
+// Not eligible
+{
+  eligible: false;
+  reason: "REQUIRED_USER_IMAGE_MISSING"
+        | "PRODUCT_CONTEXT_NOT_FOUND"
+        | "PRODUCT_TYPE_NOT_FOUND"
+        | "PRODUCT_TYPE_UNSUPPORTED";
+  productType?: ProductType;
+  requiredCategory?: UserImageCategory;
+  availableCategories: UserImageCategory[];
+}
+```
+
+---
+
+### `sdk.on(event, handler)`
+
+Subscribe to SDK events.
+
+```ts
+sdk.on<K extends SDKEventName>(
+  event: K,
+  handler: (data: SDKEventMap[K]) => void
+): void
+```
+
+---
+
+### `sdk.off(event, handler)`
+
+Unsubscribe from SDK events.
+
+```ts
+sdk.off<K extends SDKEventName>(
+  event: K,
+  handler: (data: SDKEventMap[K]) => void
+): void
+```
+
+---
+
+### `sdk.once(event, handler)`
+
+Subscribe to an event once — automatically unsubscribes after first call.
+
+```ts
+sdk.once<K extends SDKEventName>(
+  event: K,
+  handler: (data: SDKEventMap[K]) => void
+): void
+```
+
+---
+
+## Events
+
+Subscribe with `sdk.on(eventName, handler)`.
+
+### Upload & Selection Events
+
+| Event | Payload | When |
+|---|---|---|
+| `upload:started` | `{ fileCount: number }` | `ingestImages()` called |
+| `upload:completed` | `{ fileCount, validCount }` | All files validated |
+| `upload:failed` | `{ error: string }` | Upload/processing failed |
+| `selection:started` | `{ fileCount: number }` | Profile selection begins |
+| `selection:completed` | `SelectionSummary` | Profile selection done |
+| `selection:failed` | `{ error: string }` | Selection failed |
+
+### Personalization Events
+
+| Event | Payload | When |
+|---|---|---|
+| `personalization:requested` | `{ productImageUrl }` | `personalize()` called |
+| `personalization:cache_hit` | `PersonalizationResult` | Result found in cache (instant) |
+| `personalization:job_created` | `{ jobId }` | Job submitted to HyperPersona |
+| `personalization:polling_started` | `{ jobId }` | SSE stream opened |
+| `personalization:completed` | `PersonalizationResult` | Try-on image ready |
+| `personalization:failed` | `{ error, code }` | Try-on failed |
+| `personalization:cancelled` | `{ jobId? }` | Request was aborted |
+| `personalization:rate_limited` | `{ reason }` | Blocked by rate limiter |
+
+### Product Events
+
+| Event | Payload | When |
+|---|---|---|
+| `product:resolved` | `ProductContext` | Product context detected from page |
+| `product:failed` | `{ error: string }` | Could not determine product context |
+
+### Eligibility Events
+
+| Event | Payload | When |
+|---|---|---|
+| `eligibility:eligible` | `EligibilityResult` | Try-on can proceed |
+| `eligibility:ineligible` | `EligibilityResult` | Try-on cannot proceed |
+
+### Other Events
+
+| Event | Payload | When |
+|---|---|---|
+| `view:changed` | `{ mode: "original" \| "personalized" }` | View toggled |
+| `error` | `SDKError` | Any unhandled error |
+
+---
+
+## Error Codes
+
+```ts
+import { SDKError } from "@gennoctua/personalize-core";
+
+sdk.on("error", (err: SDKError) => {
+  console.log(err.code);        // error code
+  console.log(err.message);     // human-readable message
+  console.log(err.recoverable); // can the user retry?
+  console.log(err.context);     // additional debug info
+});
+```
+
+| Code | Meaning | Recoverable |
+|---|---|---|
+| `AUTH_INVALID` | Token rejected by server | No — refresh token |
+| `CONFIG_ERROR` | Invalid SDK configuration | No — fix config |
+| `RATE_LIMITED_CLIENT` | Too many requests (client-side) | Yes — wait and retry |
+| `RATE_LIMITED_SERVER` | Too many requests (server-side) | Yes — wait and retry |
+| `JOB_FAILED` | AI generation failed | Yes — retry |
+| `JOB_TIMEOUT` | Generation took too long | Yes — retry |
+| `NETWORK_ERROR` | Network connectivity issue | Yes — check connection |
+| `SELECTION_FAILED` | Photo processing failed | Yes — try different photos |
+
+---
+
+## Types
+
+### `AuthConfig`
+
+```ts
+// Full-stack mode
+type ProxyAuthConfig = {
+  proxyUrl: string;
+  getToken: () => Promise<string> | string;
+};
+
+// Frontend-only mode
+type PublicKeyAuthConfig = {
+  publicKey: string;
+  gennoctuaUrl?: string; // default: "https://api.gennoctua.com"
+};
+
+type AuthConfig = ProxyAuthConfig | PublicKeyAuthConfig;
+```
+
+### `ProductType`
+
+```ts
+type ProductType =
+  | "sunglasses"
+  | "eyeglasses"
+  | "mens_clothing"
+  | "womens_clothing"
+  | "kids_clothing"
+  | "footwear"
+  | "jewellery"
+  | "earrings"
+  | "bags"
+  | "makeup_lipstick"
+  | "makeup_foundation"
+  | "makeup_mascara"
+  | "bedroom_furniture"
+  | "bathroom_furniture"
+  | "living_room_furniture"
+  | "kitchen_furniture"
+  | "home_decor";
+```
+
+### `UserImageCategory`
+
+```ts
+type UserImageCategory =
+  | "male_full_body"
+  | "female_full_body"
+  | "child_full_body"
+  | "male_face_closeup"
+  | "female_face_closeup"
+  | "child_face_closeup";
+```
+
+### `SDKConfig`
+
+```ts
+type SDKConfig = {
+  auth: AuthConfig;
+  product?: ProductConfig;
+  cache?: CacheConfig;
+  rateLimit?: RateLimitConfig;
+  analytics?: AnalyticsConfig;
+  debug?: boolean;
+  maxImages?: number;
+  pollIntervalMs?: number;
+  pollMaxAttempts?: number;
+};
+```
+
+### `PersonalizationResult`
+
+```ts
+type PersonalizationResult = {
+  imageUrl: string;
+  cacheHit: boolean;
+  jobId: string;
+};
+```
+
+### `SelectionSummary`
+
+```ts
+type SelectionSummary = {
+  availableCategories: UserImageCategory[];
+  missingCategories: UserImageCategory[];
+  totalUploaded: number;
+  totalSelected: number;
+};
+```
+
+---
+
+## Sub-services
+
+The SDK exposes internal services directly for advanced use:
+
+```ts
+sdk.selection    // SelectionService — manage profile photos
+sdk.cache        // CacheService — read/clear cached results
+sdk.analytics    // AnalyticsService — fire custom events
+sdk.bus          // EventBus — internal event bus
+```
+
+### `sdk.selection.getSummary()`
+```ts
+sdk.selection.getSummary(): SelectionSummary | null
+```
+
+### `sdk.cache.clearAll()`
+```ts
+await sdk.cache.clearAll(): Promise<void>
+```
+
+### `sdk.cache.clearResult(...)`
+```ts
+await sdk.cache.clearResult(orgId, userImageHash, productImageHash, productType): Promise<void>
+```

@@ -1,0 +1,349 @@
+---
+title: Configuration Reference
+description: Every configuration option for Personalize.init() with types, defaults, and descriptions.
+---
+
+## Full Config Schema
+
+```ts
+Personalize.init({
+  auth: AuthConfig,              // REQUIRED
+  product?: ProductConfig,
+  cache?: CacheConfig,
+  rateLimit?: RateLimitConfig,
+  analytics?: AnalyticsConfig,
+  debug?: boolean,
+  maxImages?: number,
+  pollIntervalMs?: number,
+  pollMaxAttempts?: number,
+});
+```
+
+---
+
+## `auth` — Required
+
+Controls how the SDK authenticates with the backend.
+
+### Frontend-Only Mode
+
+```ts
+auth: {
+  publicKey: string;         // Your gn_pk_... brand key from Gennoctua
+  gennoctuaUrl?: string;     // Default: "https://api.gennoctua.com"
+}
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `publicKey` | `string` | — | Your `gn_pk_...` brand key. Required. |
+| `gennoctuaUrl` | `string` | `"https://api.gennoctua.com"` | Gennoctua backend URL. Override for staging/testing. |
+
+**Example:**
+```ts
+auth: {
+  publicKey: "gn_pk_mauijim_a3f8c2d1",
+  gennoctuaUrl: "https://api.gennoctua.com"
+}
+```
+
+### Full-Stack Mode
+
+```ts
+auth: {
+  proxyUrl: string;                         // Your backend proxy URL
+  getToken: () => Promise<string> | string; // Returns a JWT
+}
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `proxyUrl` | `string` | — | Your backend URL. The SDK appends `/submit` and `/status/:jobId`. Required. |
+| `getToken` | `function` | — | Called before each request. Must return a valid JWT string. Required. |
+
+**Example:**
+```ts
+auth: {
+  proxyUrl: "https://yourbrand.com/api/tryon",
+  getToken: async () => {
+    const res = await fetch("/auth/tryon-token", { method: "POST" });
+    const data = await res.json();
+    return data.token;
+  }
+}
+```
+
+---
+
+## `product` — Optional
+
+Controls product context detection. The SDK can auto-detect the product type from the page.
+
+```ts
+product: {
+  imageSelector?: string;
+  gallerySelector?: string;
+  productType?: ProductType;
+  rules?: ProductRule[];
+  detectFromStructuredData?: boolean;
+  detectFromDom?: boolean;
+}
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `imageSelector` | `string` | — | CSS selector for the main product image on the page |
+| `gallerySelector` | `string` | — | CSS selector for a product image gallery |
+| `productType` | `ProductType` | — | Force a specific product type. Skips auto-detection. |
+| `rules` | `ProductRule[]` | `[]` | URL or title-based rules for product type detection |
+| `detectFromStructuredData` | `boolean` | `true` | Use JSON-LD structured data on the page |
+| `detectFromDom` | `boolean` | `true` | Use DOM heuristics to detect product type |
+
+**Product rules example:**
+```ts
+product: {
+  rules: [
+    {
+      match: { urlPattern: "/sunglasses/" },
+      productType: "sunglasses"
+    },
+    {
+      match: { urlPattern: "/eyeglasses/" },
+      productType: "eyeglasses"
+    },
+    {
+      match: { titleContains: "sneaker" },
+      productType: "footwear"
+    }
+  ]
+}
+```
+
+**Force a product type (simplest):**
+```ts
+product: {
+  productType: "sunglasses"
+}
+```
+
+---
+
+## `cache` — Optional
+
+Controls result caching behavior. Results are stored in IndexedDB.
+
+```ts
+cache: {
+  resultTtlMs?: number;
+  selectionTtlMs?: number;
+  restoreActiveJobs?: boolean;
+  activeJobMaxAgeMs?: number;
+}
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `resultTtlMs` | `number` | `604800000` (7 days) | How long to keep try-on results in cache |
+| `selectionTtlMs` | `number` | `86400000` (24 hours) | How long to keep profile selection in cache |
+| `restoreActiveJobs` | `boolean` | `true` | Resume polling an in-progress job after page refresh |
+| `activeJobMaxAgeMs` | `number` | `300000` (5 minutes) | Don't restore jobs older than this |
+
+**Example:**
+```ts
+cache: {
+  resultTtlMs: 86400000,      // 1 day instead of 7
+  restoreActiveJobs: true,
+  activeJobMaxAgeMs: 120000,  // only restore jobs up to 2 minutes old
+}
+```
+
+<Info>
+Set `restoreActiveJobs: true` (default) so users don't lose their generation progress if they accidentally refresh the page during the ~20s generation wait.
+</Info>
+
+---
+
+## `rateLimit` — Optional
+
+Controls client-side rate limiting to prevent abuse and excessive API calls.
+
+```ts
+rateLimit: {
+  personalization?: {
+    enabled?: boolean;
+    cooldownMs?: number;
+    maxPerSession?: number;
+    maxPerProduct?: number;
+    singleFlight?: boolean;
+  };
+  tagging?: {
+    enabled?: boolean;
+    cooldownMs?: number;
+    maxPerSession?: number;
+  };
+}
+```
+
+### Personalization Rate Limit
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | `boolean` | `true` | Enable/disable rate limiting |
+| `cooldownMs` | `number` | `10000` (10s) | Minimum time between try-on requests |
+| `maxPerSession` | `number` | `20` | Max try-ons allowed in one browser session |
+| `maxPerProduct` | `number` | `3` | Max try-ons per product per session |
+| `singleFlight` | `boolean` | `true` | If a job is already running for this product, return the same promise instead of submitting again |
+
+**Example:**
+```ts
+rateLimit: {
+  personalization: {
+    cooldownMs: 5000,      // allow retries every 5s
+    maxPerSession: 50,     // allow more try-ons per session
+    maxPerProduct: 5,
+  }
+}
+```
+
+---
+
+## `analytics` — Optional
+
+Controls event reporting. See [Analytics](/guides/analytics) for the full event reference.
+
+```ts
+analytics: {
+  enabled?: boolean;
+  onEvent?: (event: AnalyticsEvent) => void;
+}
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | `boolean` | `true` | Enable/disable analytics events |
+| `onEvent` | `function` | — | Callback fired for every SDK event. Use this to send events to your analytics platform. |
+
+**Example — send to Mixpanel:**
+```ts
+analytics: {
+  onEvent: (event) => {
+    mixpanel.track(event.eventName, {
+      orgId: event.orgId,
+      sessionId: event.sessionId,
+      productType: event.product?.productType,
+      jobId: event.personalization?.jobId,
+      cacheHit: event.personalization?.cacheHit,
+    });
+  }
+}
+```
+
+**Example — send to your own backend:**
+```ts
+analytics: {
+  onEvent: (event) => {
+    fetch("/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    }).catch(() => {}); // never let analytics break the try-on
+  }
+}
+```
+
+---
+
+## `debug` — Optional
+
+```ts
+debug?: boolean  // Default: false
+```
+
+Enables verbose console logging. Shows every internal step — model loading, face detection results, job submission, polling events, cache hits/misses.
+
+<Warning>
+Never enable `debug: true` in production. It logs internal details that could expose configuration information.
+</Warning>
+
+---
+
+## `maxImages` — Optional
+
+```ts
+maxImages?: number  // Default: 80
+```
+
+Maximum number of photos to process from the file input. Photos beyond this limit are silently ignored. Increase if your users typically upload large photo libraries.
+
+---
+
+## `pollIntervalMs` — Optional
+
+```ts
+pollIntervalMs?: number  // Default: 1500
+```
+
+How often (in milliseconds) to check for job completion via SSE. Lower values mean faster detection of completion but more network activity.
+
+---
+
+## `pollMaxAttempts` — Optional
+
+```ts
+pollMaxAttempts?: number  // Default: 120
+```
+
+Maximum number of polling attempts before throwing a `JOB_TIMEOUT` error. With the default `pollIntervalMs` of 1500ms and 120 attempts, the timeout is **3 minutes**.
+
+```ts
+// Extend timeout to 5 minutes:
+pollIntervalMs: 1500,
+pollMaxAttempts: 200,
+```
+
+---
+
+## Complete Example
+
+```ts
+import { Personalize } from "@gennoctua/personalize-core";
+
+const sdk = await Personalize.init({
+  // Auth (required)
+  auth: {
+    publicKey: "gn_pk_yourbrand_xxx",
+  },
+
+  // Product detection
+  product: {
+    productType: "sunglasses",
+  },
+
+  // Cache
+  cache: {
+    resultTtlMs: 604800000,   // 7 days
+    restoreActiveJobs: true,
+  },
+
+  // Rate limiting
+  rateLimit: {
+    personalization: {
+      cooldownMs: 10000,
+      maxPerSession: 20,
+      maxPerProduct: 3,
+      singleFlight: true,
+    }
+  },
+
+  // Analytics
+  analytics: {
+    onEvent: (event) => console.log(event.eventName, event),
+  },
+
+  // Other
+  debug: false,
+  maxImages: 80,
+  pollIntervalMs: 1500,
+  pollMaxAttempts: 120,
+});
+```

@@ -1,0 +1,154 @@
+---
+title: FAQ
+description: Frequently asked questions about the Gennoctua SDK.
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="What is the Gennoctua SDK?">
+    It's a JavaScript SDK that adds AI-powered virtual try-on to any fashion brand website. Shoppers upload a photo, click Try On, and see themselves wearing the product in ~20 seconds.
+  </Accordion>
+
+  <Accordion title="What products does it support?">
+    Sunglasses, eyeglasses, men's/women's/kids' clothing, footwear, jewellery, earrings, handbags, lipstick, foundation, and mascara. Furniture and home decor are coming in Phase 2. See [Supported Products](/sdk/supported-products).
+  </Accordion>
+
+  <Accordion title="How long does generation take?">
+    Typically **20–40 seconds** for a fresh generation. Repeat try-ons of the same product by the same user are **instant** (served from cache).
+  </Accordion>
+
+  <Accordion title="Does it require a webcam or live camera?">
+    No. Users upload photos from their device (any image file). Live AR/camera mode is not currently supported.
+  </Accordion>
+
+  <Accordion title="What browsers are supported?">
+    Chrome 90+, Firefox 88+, Safari 14+, Edge 90+, and mobile equivalents. See [Browser Compatibility](/sdk/developer-guide#browser-compatibility).
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Integration
+
+<AccordionGroup>
+  <Accordion title="Do I need a backend to use this?">
+    No. If you use frontend-only mode with a `gn_pk_...` brand key, Gennoctua handles the backend for you. You just add a `<script>` tag.
+
+    If you prefer to manage your own proxy (for more control), you can use full-stack mode with your own backend.
+  </Accordion>
+
+  <Accordion title="How do I get a brand key?">
+    Contact Gennoctua. You'll receive a `gn_pk_...` key tied to your brand's usage quota.
+  </Accordion>
+
+  <Accordion title="Can I use it with Shopify?">
+    Yes. Add the script tag to your `sections/product.liquid` template. See [Frontend-Only Integration → Shopify](/integration/frontend-only#shopify-integration).
+  </Accordion>
+
+  <Accordion title="Can I use it with Webflow?">
+    Yes. Add an Embed element with the script tag. See [Frontend-Only Integration](/integration/frontend-only).
+  </Accordion>
+
+  <Accordion title="Can I use it with React / Next.js?">
+    Yes. Install `@gennoctua/personalize-react` and use the `PersonalizeProvider` and hooks. See [React Overview](/react/overview).
+  </Accordion>
+
+  <Accordion title="Does it work with TypeScript?">
+    Yes. The package ships with full TypeScript declarations. Import types from `@gennoctua/personalize-core`.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Privacy & Security
+
+<AccordionGroup>
+  <Accordion title="Are user photos stored on your servers?">
+    No. Photos are processed entirely in the browser using local AI models. Only the selected profile photo is sent to HyperPersona for AI generation — it is not stored on Gennoctua's servers.
+  </Accordion>
+
+  <Accordion title="Is it safe to put my brand key in frontend code?">
+    Yes. Brand keys (`gn_pk_...`) can only be used to fetch short-lived JWT tokens. They cannot directly call HyperPersona. If a key is leaked, you can deactivate it instantly.
+  </Accordion>
+
+  <Accordion title="How are HyperPersona API keys protected?">
+    In both modes, HP API keys live on the backend only — never in the browser. In frontend-only mode, the key is stored in Gennoctua's database. In full-stack mode, it's in the brand's `.env` file.
+  </Accordion>
+
+  <Accordion title="How do JWT tokens work?">
+    Tokens expire after 1 hour. They're signed with a server secret and validated on every request. See [Authentication](/security/authentication).
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Performance
+
+<AccordionGroup>
+  <Accordion title="Why does the first photo upload take longer?">
+    The SDK needs to download AI model files (face-api.js + MediaPipe) on first use. This takes 5–15 seconds depending on connection speed. After that, models are cached by the browser and load instantly.
+  </Accordion>
+
+  <Accordion title="Can I pre-load the AI models?">
+    Yes. Call `Personalize.init()` on page load even before the user opens the try-on UI. The models will be downloaded and ready by the time the user clicks anything.
+  </Accordion>
+
+  <Accordion title="Why is the try-on result image slow to display?">
+    The generated image is served directly from HyperPersona's GCS bucket without a CDN. Download times can be 1–3 seconds depending on location. This is a known bottleneck — a CDN in front of GCS would reduce this to under 300ms.
+  </Accordion>
+
+  <Accordion title="Does caching help?">
+    Yes significantly. The same user trying on the same product a second time gets an **instant** result (under 100ms). Cache lasts 7 days by default. See [Caching](/sdk/caching).
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Generation & Errors
+
+<AccordionGroup>
+  <Accordion title="Can I retry a failed try-on?">
+    Yes. Just call `sdk.personalize()` again with the same parameters. The SDK will submit a new job. Failed jobs are not cached.
+  </Accordion>
+
+  <Accordion title="What happens if the user refreshes the page during generation?">
+    By default (`restoreActiveJobs: true`), the SDK stores the `job_id` in IndexedDB. On the next page load, it automatically resumes polling the existing job instead of submitting a new one. The user won't lose their place.
+
+    This only works if the job is less than 5 minutes old (configurable via `activeJobMaxAgeMs`).
+  </Accordion>
+
+  <Accordion title="What happens if the product image URL becomes unreachable?">
+    The job will fail on HyperPersona's side with a `JOB_FAILED` error. Make sure your product image URLs are publicly accessible and don't require authentication.
+  </Accordion>
+
+  <Accordion title="What happens if the user loses internet mid-generation?">
+    The SSE stream will disconnect. The SDK will throw a `NETWORK_ERROR`. The user can retry — if `restoreActiveJobs: true`, the SDK will resume polling the same job when they reconnect.
+  </Accordion>
+
+  <Accordion title="Can I tell which profile (male/female/child) was used?">
+    Yes — check `summary.availableCategories` after `ingestImages()`. It tells you which categories were found (e.g. `["female_full_body", "female_face_closeup"]`). The SDK uses the best match for the product type.
+  </Accordion>
+
+  <Accordion title="What if getToken() fails in full-stack mode?">
+    The SDK will throw a `NETWORK_ERROR` or `AUTH_INVALID` error. Make sure your token endpoint is always reachable and returns a valid JWT. Add error handling in your `getToken()` function to retry or redirect to login if needed.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Billing & Usage
+
+<AccordionGroup>
+  <Accordion title="How is usage tracked?">
+    Usage is tracked per brand's HyperPersona API key. Each try-on job consumes one unit of quota. Check your HyperPersona dashboard for usage stats.
+  </Accordion>
+
+  <Accordion title="Are cached results billed?">
+    No. Cache hits return instantly from the browser and don't submit a new job to HyperPersona. You're only billed for new generations.
+  </Accordion>
+
+  <Accordion title="Can I limit how many try-ons a user can do?">
+    Yes. Use the `rateLimit` config to set `maxPerSession` and `maxPerProduct`. See [Rate Limiting](/sdk/rate-limiting).
+  </Accordion>
+</AccordionGroup>

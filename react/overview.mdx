@@ -1,0 +1,126 @@
+---
+title: React Overview
+description: Add virtual try-on to any React app with the @gennoctua/personalize-react package.
+---
+
+## Installation
+
+```bash
+npm install @gennoctua/personalize-react
+```
+
+This package wraps `@gennoctua/personalize-core` with React context and hooks. You don't need to install the core package separately.
+
+---
+
+## Setup
+
+Wrap your app (or the product page component) with `PersonalizeProvider`:
+
+```tsx
+import { PersonalizeProvider } from "@gennoctua/personalize-react";
+
+function App() {
+  return (
+    <PersonalizeProvider
+      config={{
+        auth: {
+          publicKey: "gn_pk_yourbrand_xxx"
+        }
+      }}
+    >
+      <ProductPage />
+    </PersonalizeProvider>
+  );
+}
+```
+
+The provider initializes the SDK once and makes it available to all child components via context.
+
+---
+
+## Quick Example
+
+```tsx
+import {
+  PersonalizeProvider,
+  useImageIngestion,
+  usePersonalization,
+} from "@gennoctua/personalize-react";
+
+function TryOnWidget({ productImageUrl }: { productImageUrl: string }) {
+  const { ingest, summary, ingesting } = useImageIngestion();
+  const { personalize, result, loading, error } = usePersonalization();
+
+  return (
+    <div>
+      <input
+        type="file"
+        multiple
+        onChange={(e) => ingest(e.target.files!)}
+        disabled={ingesting}
+      />
+
+      {ingesting && <p>Processing photos...</p>}
+
+      {summary && summary.availableCategories.length > 0 && (
+        <button
+          onClick={() => personalize({ imageUrl: productImageUrl, productType: "sunglasses" })}
+          disabled={loading}
+        >
+          {loading ? "Generating (~20s)..." : "Try On"}
+        </button>
+      )}
+
+      {error && <p style={{ color: "red" }}>Failed: {error.message}</p>}
+
+      {result && <img src={result.imageUrl} alt="Try-on result" />}
+    </div>
+  );
+}
+
+// Wrap with provider
+export default function ProductPage() {
+  return (
+    <PersonalizeProvider config={{ auth: { publicKey: "gn_pk_yourbrand_xxx" } }}>
+      <TryOnWidget productImageUrl="https://brand.com/product.jpg" />
+    </PersonalizeProvider>
+  );
+}
+```
+
+---
+
+## Available Hooks
+
+| Hook | What it does |
+|---|---|
+| [`usePersonalize()`](/react/hooks#usepersonalize) | Access the SDK instance and ready state |
+| [`useImageIngestion()`](/react/hooks#useimageingestion) | Handle photo upload and profile selection |
+| [`usePersonalization()`](/react/hooks#usepersonalization) | Run try-on and get results |
+
+See [React Hooks Reference](/react/hooks) for full API.
+
+---
+
+## Next.js Usage
+
+Works in Next.js with webpack mode. Use the `"use client"` directive:
+
+```tsx
+"use client";
+
+import { PersonalizeProvider } from "@gennoctua/personalize-react";
+
+export default function ProductLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <PersonalizeProvider config={{ auth: { publicKey: "gn_pk_..." } }}>
+      {children}
+    </PersonalizeProvider>
+  );
+}
+```
+
+<Warning>
+Turbopack (`next dev`) is not supported. Use `next dev --webpack` instead.
+</Warning>

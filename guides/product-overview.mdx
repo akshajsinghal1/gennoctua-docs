@@ -1,0 +1,144 @@
+---
+title: Product Overview
+description: For product managers, brand decision-makers, and business stakeholders.
+---
+
+## What is it?
+
+`@gennoctua/personalize-core` is an AI virtual try-on SDK built by Gennoctua. It allows shoppers on any fashion brand's website to see how a product looks on them — without needing a physical fitting room.
+
+The shopper uploads a photo. The AI generates a realistic image of them wearing the product. The whole process takes about 20 seconds.
+
+---
+
+## What problem does it solve?
+
+**The core problem:** Online shoppers can't try products before buying. This leads to:
+- High return rates (20–40% for fashion)
+- Low conversion rates
+- Poor customer confidence
+
+**What virtual try-on does:**
+- Shoppers see themselves wearing the product
+- Confidence increases → conversions increase
+- Returns decrease → costs decrease
+
+---
+
+## How does it work?
+
+<Steps>
+  <Step title="Shopper visits your product page">
+    Your page loads as normal. The try-on button appears next to the product.
+  </Step>
+  <Step title="Shopper uploads a photo">
+    They select photos from their device. The AI automatically picks the best one.
+  </Step>
+  <Step title="AI generates the try-on">
+    Takes about 20 seconds. The shopper sees a loading indicator.
+  </Step>
+  <Step title="Result is shown">
+    The shopper sees themselves wearing the product. They can toggle between original and try-on view.
+  </Step>
+</Steps>
+
+The AI runs entirely in the background. Your brand's website looks and feels exactly the same.
+
+---
+
+## What products does it support?
+
+| Category | Products |
+|---|---|
+| Eyewear | Sunglasses, Eyeglasses |
+| Clothing | Men's, Women's, Kids' |
+| Footwear | All footwear |
+| Jewellery | Necklaces, Earrings |
+| Bags | All bags |
+| Makeup | Lipstick, Foundation, Mascara |
+| Furniture *(Phase 2)* | Bedroom, Bathroom, Living Room, Kitchen |
+| Home Decor *(Phase 2)* | General home decor |
+
+See [Supported Products](/sdk/supported-products) for the complete list.
+
+---
+
+## Integration effort
+
+| Scenario | Time to integrate |
+|---|---|
+| Frontend-only (no backend) | ~2 hours |
+| Full-stack (existing backend) | ~4 hours |
+| Using an AI coding tool | ~30 minutes |
+
+---
+
+## Two types of brands
+
+<CardGroup cols={2}>
+  <Card title="Full-Stack Brands" icon="server">
+    Have their own frontend AND backend. They store the AI API key on their own server and build a small proxy endpoint (we provide the code — copy/paste).
+  </Card>
+  <Card title="Frontend-Only Brands" icon="globe">
+    Have only a frontend (Shopify, Webflow, plain HTML). They get a brand key from Gennoctua and add one line to their website. Gennoctua handles everything else.
+  </Card>
+</CardGroup>
+
+---
+
+## Privacy & Security
+
+<CardGroup cols={2}>
+  <Card title="Photos stay in browser" icon="shield">
+    User photos are processed locally using browser AI models — never stored on any server without explicit consent.
+  </Card>
+  <Card title="API keys never exposed" icon="lock">
+    API keys live on the server only. Browsers only ever see short-lived session tokens (1hr expiry).
+  </Card>
+  <Card title="Rate limiting built in" icon="gauge">
+    Prevents abuse and runaway API costs. Configurable per session and per product.
+  </Card>
+  <Card title="Tokens expire in 1hr" icon="clock">
+    Short-lived tokens minimize the impact of any token theft.
+  </Card>
+</CardGroup>
+
+---
+
+## Analytics & Tracking
+
+The SDK fires events for every key action. Your team can track:
+
+- How many users clicked "Try On"
+- How many completions vs failures
+- Cache hit rate (repeat users getting instant results)
+- Latency per product type
+
+Events are fired via a simple callback — no external tracking calls, no third-party SDKs required.
+
+---
+
+## Performance
+
+| Metric | Typical value |
+|---|---|
+| Profile selection (first time) | ~20 seconds |
+| Profile selection (subsequent) | ~5 seconds |
+| AI generation | ~20–40 seconds |
+| Total first try-on | ~40–60 seconds |
+| Total repeat try-on (cached) | \<1 second |
+
+<Info>
+Results are cached locally in the browser. If a user tries on the same product again, the result appears instantly.
+</Info>
+
+---
+
+## Limitations
+
+<Warning>
+- Requires a modern browser (Chrome, Firefox, Safari, Edge — last 2 versions)
+- Photo upload required — no camera/live AR support yet
+- AI generation quality depends on photo quality
+- Generation time can vary (20s–60s) depending on AI backend load
+</Warning>

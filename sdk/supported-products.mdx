@@ -1,0 +1,167 @@
+---
+title: Supported Products
+description: Complete list of product types supported for virtual try-on.
+---
+
+## Quick Reference
+
+| Product | `productType` value | Photo Required | Status |
+|---|---|---|---|
+| Sunglasses | `sunglasses` | Face photo | ✅ Live |
+| Eyeglasses / reading glasses | `eyeglasses` | Face photo | ✅ Live |
+| Men's clothing | `mens_clothing` | Full body (male) | ✅ Live |
+| Women's clothing | `womens_clothing` | Full body (female) | ✅ Live |
+| Kids' clothing | `kids_clothing` | Full body (child) | ✅ Live |
+| Shoes / sneakers / boots | `footwear` | Full body (any) | ✅ Live |
+| Necklaces / jewellery | `jewellery` | Face photo | ✅ Live |
+| Earrings | `earrings` | Face photo | ✅ Live |
+| Handbags / purses | `bags` | Full body (any) | ✅ Live |
+| Lipstick | `makeup_lipstick` | Face photo | ✅ Live |
+| Foundation | `makeup_foundation` | Face photo | ✅ Live |
+| Mascara | `makeup_mascara` | Face photo | ✅ Live |
+| Bedroom furniture | `bedroom_furniture` | — | 🔜 Phase 2 |
+| Bathroom furniture | `bathroom_furniture` | — | 🔜 Phase 2 |
+| Living room furniture | `living_room_furniture` | — | 🔜 Phase 2 |
+| Kitchen furniture | `kitchen_furniture` | — | 🔜 Phase 2 |
+| Home decor | `home_decor` | — | 🔜 Phase 2 |
+
+---
+
+## Photo Requirements by Product
+
+### Face Photo Required
+
+These products overlay onto the face or neck area.
+
+| Product | `productType` |
+|---|---|
+| Sunglasses | `sunglasses` |
+| Eyeglasses | `eyeglasses` |
+| Necklaces / jewellery | `jewellery` |
+| Earrings | `earrings` |
+| Lipstick | `makeup_lipstick` |
+| Foundation | `makeup_foundation` |
+| Mascara | `makeup_mascara` |
+
+<Info>Accepted categories: `male_face_closeup`, `female_face_closeup`, `child_face_closeup`</Info>
+
+---
+
+### Full Body Photo Required
+
+These products are placed on the full body.
+
+| Product | `productType` | Gender restriction |
+|---|---|---|
+| Men's clothing | `mens_clothing` | Male only |
+| Women's clothing | `womens_clothing` | Female only |
+| Kids' clothing | `kids_clothing` | Child only |
+| Shoes / sneakers | `footwear` | Any gender |
+| Handbags / purses | `bags` | Any gender |
+
+---
+
+### Phase 2 — Coming Soon
+
+<Warning>
+Furniture and home decor product types are defined in the SDK but will return `PRODUCT_TYPE_UNSUPPORTED` from `sdk.checkEligibility()` until Phase 2 launches.
+</Warning>
+
+| Product | `productType` |
+|---|---|
+| Bedroom furniture | `bedroom_furniture` |
+| Bathroom furniture | `bathroom_furniture` |
+| Living room furniture | `living_room_furniture` |
+| Kitchen furniture | `kitchen_furniture` |
+| Home decor | `home_decor` |
+
+---
+
+## TypeScript Type
+
+```ts
+type ProductType =
+  | "sunglasses"
+  | "eyeglasses"
+  | "mens_clothing"
+  | "womens_clothing"
+  | "kids_clothing"
+  | "footwear"
+  | "jewellery"
+  | "earrings"
+  | "bags"
+  | "makeup_lipstick"
+  | "makeup_foundation"
+  | "makeup_mascara"
+  | "bedroom_furniture"
+  | "bathroom_furniture"
+  | "living_room_furniture"
+  | "kitchen_furniture"
+  | "home_decor";
+```
+
+---
+
+## Checking Eligibility
+
+```ts
+const eligibility = sdk.checkEligibility("sunglasses");
+
+if (eligibility.eligible) {
+  // Show Try On button
+} else {
+  switch (eligibility.reason) {
+    case "REQUIRED_USER_IMAGE_MISSING":
+      // User hasn't uploaded the right photo yet
+      break;
+    case "PRODUCT_TYPE_UNSUPPORTED":
+      // Phase 2 product — not yet available
+      break;
+    case "PRODUCT_TYPE_NOT_FOUND":
+      // productType was not provided
+      break;
+  }
+}
+```
+
+---
+
+## Best Practices for Product Images
+
+<CardGroup cols={2}>
+  <Card title="Use white background" icon="image">
+    Clean, white or transparent background product images produce the best results.
+  </Card>
+  <Card title="High resolution" icon="sparkles">
+    Use at least 512×512px. Higher resolution = better try-on quality.
+  </Card>
+  <Card title="Front-facing view" icon="eye">
+    For clothing, use a flat-lay or mannequin. For eyewear, use a straight-on front view.
+  </Card>
+  <Card title="Product fills the frame" icon="maximize">
+    The product should be the main subject and fill most of the frame.
+  </Card>
+</CardGroup>
+
+---
+
+## Internal Mapping
+
+When you call `sdk.personalize({ imageUrl, productType })`, the SDK maps your `productType` to a category and label sent to HyperPersona.
+
+| `productType` | Category sent | Label sent |
+|---|---|---|
+| `sunglasses` | `eyewear` | `sunglasses` |
+| `eyeglasses` | `eyewear` | `eyeglasses` |
+| `mens_clothing` | `clothing` | `mens clothing` |
+| `womens_clothing` | `clothing` | `womens clothing` |
+| `kids_clothing` | `clothing` | `kids clothing` |
+| `footwear` | `footwear` | `footwear` |
+| `jewellery` | `jewellery` | `jewellery necklace` |
+| `earrings` | `jewellery` | `earrings` |
+| `bags` | `accessories` | `bag` |
+| `makeup_lipstick` | `makeup` | `lipstick` |
+| `makeup_foundation` | `makeup` | `foundation` |
+| `makeup_mascara` | `makeup` | `mascara` |
+
+You don't need to know any of this — just pass the `productType` value and the SDK handles the rest.

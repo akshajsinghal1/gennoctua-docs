@@ -1,0 +1,372 @@
+---
+title: Developer Guide
+description: Full technical reference for developers integrating @gennoctua/personalize-core.
+---
+
+## Prerequisites
+
+- Modern browser environment (Chrome, Firefox, Safari, Edge — last 2 versions)
+- HTTPS in production (required for browser AI models)
+- Node.js 18+ (for backend proxy)
+
+---
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @gennoctua/personalize-core
+```
+
+```bash yarn
+yarn add @gennoctua/personalize-core
+```
+
+```bash pnpm
+pnpm add @gennoctua/personalize-core
+```
+
+```html CDN
+<script src="https://cdn.gennoctua.com/personalize.min.global.js"></script>
+<!-- window.Personalize is now available -->
+```
+</CodeGroup>
+
+---
+
+## Initialization
+
+<CodeGroup>
+```ts Full-Stack Mode
+import { Personalize } from "@gennoctua/personalize-core";
+
+const sdk = await Personalize.init({
+  auth: {
+    proxyUrl: "https://yourbrand.com/api/tryon",
+    getToken: async () => {
+      const res = await fetch("/auth/tryon-token");
+      const data = await res.json();
+      return data.token;
+    }
+  },
+  debug: false,
+  analytics: {
+    onEvent: (event) => console.log(event)
+  }
+});
+```
+
+```ts Frontend-Only Mode
+import { Personalize } from "@gennoctua/personalize-core";
+
+const sdk = await Personalize.init({
+  auth: {
+    publicKey: "gn_pk_yourbrand_xxx"
+    // gennoctuaUrl is optional, defaults to "https://api.gennoctua.com"
+  }
+});
+```
+</CodeGroup>
+
+---
+
+## Core Workflow
+
+```ts
+// 1. Initialize SDK
+const sdk = await Personalize.init({ auth: { ... } });
+
+// 2. Subscribe to events (optional but recommended)
+sdk.on("personalization:completed", ({ imageUrl }) => {
+  document.getElementById("result").src = imageUrl;
+});
+
+sdk.on("personalization:failed", ({ error }) => {
+  console.error("Try-on failed:", error);
+});
+
+// 3. Ingest user photos (from file input)
+const fileInput = document.getElementById("photoInput");
+fileInput.addEventListener("change", async (e) => {
+  const summary = await sdk.ingestImages(e.target.files, (progress) => {
+    console.log(progress.message); // "Scanning faces 3 of 14..."
+  });
+  console.log("Available categories:", summary.availableCategories);
+});
+
+// 4. Run personalization
+const result = await sdk.personalize({
+  imageUrl: "https://brand.com/product.jpg",
+  productType: "sunglasses",
+  productId: "sku-123"
+});
+
+console.log(result.imageUrl);   // personalized image URL
+console.log(result.cacheHit);   // true if returned from cache
+console.log(result.jobId);      // HyperPersona job ID
+```
+
+---
+
+## Configuration Options
+
+```ts
+Personalize.init({
+  // REQUIRED
+  auth: ProxyAuthConfig | PublicKeyAuthConfig,
+
+  // Product detection
+  product: {
+    imageSelector: ".product-image",
+    gallerySelector: ".product-gallery",
+    productType: "sunglasses",
+    rules: [
+      { match: { urlPattern: "/sunglasses/" }, productType: "sunglasses" }
+    ],
+    detectFromStructuredData: true,
+    detectFromDom: true,
+  },
+
+  // Cache settings
+  cache: {
+    resultTtlMs: 604800000,       // 7 days (default)
+    selectionTtlMs: 86400000,     // 24h (default)
+    restoreActiveJobs: true,
+    activeJobMaxAgeMs: 300000,    // 5 min (default)
+  },
+
+  // Rate limiting
+  rateLimit: {
+    personalization: {
+      enabled: true,
+      cooldownMs: 10000,
+      maxPerSession: 20,
+      maxPerProduct: 3,
+      singleFlight: true,
+    }
+  },
+
+  // Analytics
+  analytics: {
+    enabled: true,
+    onEvent: (event) => {
+      mixpanel.track(event.eventName, event);
+    }
+  },
+
+  debug: false,
+  maxImages: 80,
+  pollIntervalMs: 1500,
+  pollMaxAttempts: 120,
+});
+```
+
+---
+
+## Methods
+
+### `sdk.ingestImages(files, onProgress?)`
+
+Processes a FileList from a folder/file input. Runs face detection, gender classification, pose scoring, and selects the best profile photos.
+
+```ts
+const summary = await sdk.ingestImages(
+  fileInputElement.files,
+  (progress) => {
+    // progress.message — human-readable status string
+    // progress.step — current step number
+    // progress.total — total steps
+    updateProgressBar(progress.message);
+  }
+);
+
+// summary.availableCategories — e.g. ["female_full_body", "female_face_closeup"]
+// summary.missingCategories — categories not found
+// summary.totalUploaded — total valid photos processed
+// summary.totalSelected — number of profiles selected
+```
+
+### `sdk.personalize(opts)`
+
+Submits a try-on job and returns the result.
+
+```ts
+const result = await sdk.personalize({
+  imageUrl: "https://brand.com/product.jpg",  // REQUIRED
+  productType: "sunglasses",                   // REQUIRED
+  productId: "sku-123",                        // optional
+  abortSignal: controller.signal,              // optional
+});
+
+// result.imageUrl — personalized image URL
+// result.cacheHit — true if returned from cache (instant)
+// result.jobId — job ID for debugging
+```
+
+### `sdk.checkEligibility(productType?)`
+
+Check if a try-on can be performed before starting.
+
+```ts
+const eligibility = sdk.checkEligibility("sunglasses");
+
+if (eligibility.eligible) {
+  // show Try On button
+} else {
+  // eligibility.reason:
+  // "REQUIRED_USER_IMAGE_MISSING"
+  // "PRODUCT_TYPE_NOT_FOUND"
+  // "PRODUCT_TYPE_UNSUPPORTED"
+  console.log("Can't try on:", eligibility.reason);
+}
+```
+
+### `sdk.on / sdk.off / sdk.once`
+
+```ts
+sdk.on("personalization:completed", ({ imageUrl, cacheHit, jobId }) => {
+  showResult(imageUrl);
+});
+
+sdk.off("personalization:completed", handler);
+sdk.once("personalization:completed", handler);
+```
+
+See [API Reference](/sdk/api-reference) for all events.
+
+---
+
+## TypeScript Types
+
+```ts
+import type {
+  SDKConfig,
+  AuthConfig,
+  ProxyAuthConfig,
+  PublicKeyAuthConfig,
+  ProductType,
+  UserImageCategory,
+  PersonalizationResult,
+  SelectionSummary,
+  EligibilityResult,
+  SDKEventMap,
+  SDKEventName,
+  AnalyticsEvent,
+} from "@gennoctua/personalize-core";
+```
+
+---
+
+## Error Handling
+
+```ts
+import { SDKError } from "@gennoctua/personalize-core";
+
+try {
+  const result = await sdk.personalize({ imageUrl, productType });
+} catch (err) {
+  if (err instanceof SDKError) {
+    switch (err.code) {
+      case "AUTH_INVALID":
+        // token expired — refresh and retry
+        break;
+      case "RATE_LIMITED_CLIENT":
+        // user is trying too fast
+        break;
+      case "JOB_FAILED":
+        // AI generation failed — retry
+        break;
+      case "JOB_TIMEOUT":
+        // took too long — retry
+        break;
+      case "NETWORK_ERROR":
+        // check internet connection
+        break;
+    }
+    console.log("Recoverable:", err.recoverable);
+  }
+}
+```
+
+---
+
+## React Integration
+
+```bash
+npm install @gennoctua/personalize-react
+```
+
+```tsx
+import {
+  PersonalizeProvider,
+  usePersonalize,
+  useImageIngestion,
+  usePersonalization
+} from "@gennoctua/personalize-react";
+
+function App() {
+  return (
+    <PersonalizeProvider config={{ auth: { publicKey: "gn_pk_..." } }}>
+      <ProductPage />
+    </PersonalizeProvider>
+  );
+}
+
+function ProductPage() {
+  const { sdk, ready } = usePersonalize();
+  const { ingest, summary, ingesting } = useImageIngestion();
+  const { personalize, result, loading, error } = usePersonalization();
+
+  return (
+    <div>
+      <input type="file" multiple onChange={(e) => ingest(e.target.files)} />
+      <button onClick={() => personalize({ imageUrl, productType: "sunglasses" })}>
+        Try On
+      </button>
+      {result && <img src={result.imageUrl} />}
+    </div>
+  );
+}
+```
+
+---
+
+## Caching Behavior
+
+Results are cached in **IndexedDB** (browser storage). Cache key:
+```
+orgId + userImageHash + productImageHash + productType
+```
+
+- Same user + same product = instant result (cache hit)
+- Cache survives page refresh and browser close
+- Default TTL: 7 days
+- Clear cache: `sdk.cache.clearAll()`
+
+---
+
+## Browser Compatibility
+
+| Browser | Min Version |
+|---|---|
+| Chrome | 90+ |
+| Firefox | 88+ |
+| Safari | 14+ |
+| Edge | 90+ |
+| Mobile Chrome | 90+ |
+| Mobile Safari | 14+ |
+
+---
+
+## Bundler Compatibility
+
+| Bundler | Support |
+|---|---|
+| Vite | ✅ |
+| Webpack 5 | ✅ |
+| Next.js (webpack mode) | ✅ |
+| Next.js (Turbopack) | ⚠️ Use `--webpack` flag |
+| Rollup | ✅ |
+| esbuild | ✅ |
+| Parcel | ✅ |
+| Plain `<script>` tag | ✅ Use CDN bundle |

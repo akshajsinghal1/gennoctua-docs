@@ -1,0 +1,297 @@
+---
+title: Troubleshooting
+description: Solutions to the most common issues when integrating the SDK.
+---
+
+## SDK Initialization
+
+<AccordionGroup>
+  <Accordion title='"auth.publicKey is required" error'>
+    You're passing the wrong auth config key. Make sure you use `publicKey`, not `apiKey` or `key`:
+
+    ```ts
+    // ❌ Wrong
+    auth: { apiKey: "gn_pk_..." }
+
+    // ✅ Correct
+    auth: { publicKey: "gn_pk_..." }
+    ```
+  </Accordion>
+
+  <Accordion title='"auth must have either proxyUrl+getToken or publicKey"'>
+    Your auth config is missing required fields:
+
+    ```ts
+    // Frontend-only — needs publicKey
+    auth: { publicKey: "gn_pk_..." }
+
+    // Full-stack — needs proxyUrl AND getToken
+    auth: {
+      proxyUrl: "https://yourbrand.com/api/tryon",
+      getToken: async () => "your-jwt-token"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="SDK initializes but nothing happens">
+    Make sure you're awaiting `Personalize.init()`:
+
+    ```ts
+    // ❌ Wrong — sdk is a Promise, not the SDK instance
+    const sdk = Personalize.init({ auth: ... });
+
+    // ✅ Correct
+    const sdk = await Personalize.init({ auth: ... });
+    ```
+  </Accordion>
+
+  <Accordion title='"window.Personalize is not defined"'>
+    The CDN script hasn't loaded yet. Make sure the `<script>` tag comes before your code:
+
+    ```html
+    <!-- ✅ Script first -->
+    <script src="https://cdn.gennoctua.com/personalize.min.global.js"></script>
+    <script>
+      const sdk = await window.Personalize.init(...);
+    </script>
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Authentication Errors
+
+<AccordionGroup>
+  <Accordion title='"Invalid or inactive brand key"'>
+    Your `gn_pk_...` key is either:
+    - Wrong (typo)
+    - Not registered in the Gennoctua database
+    - Deactivated
+
+    Verify the key is correct and registered. Contact Gennoctua support if needed.
+  </Accordion>
+
+  <Accordion title='"Invalid or expired token" from proxy'>
+    Your JWT has expired or is malformed. In full-stack mode:
+
+    - Make sure `getToken()` returns the token **string**, not the full response object:
+      ```ts
+      // ❌ Wrong
+      getToken: async () => await fetch("/auth/token").then(r => r.json())
+
+      // ✅ Correct
+      getToken: async () => {
+        const res = await fetch("/auth/token");
+        const data = await res.json();
+        return data.token;  // return the string
+      }
+      ```
+    - Make sure `JWT_SECRET` on your backend matches the secret used to verify
+  </Accordion>
+
+  <Accordion title='"401 Unauthorized" from your proxy'>
+    Check your JWT middleware is reading the header correctly:
+
+    ```ts
+    const token = (req.headers.authorization ?? "").replace("Bearer ", "");
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Photo Upload Issues
+
+<AccordionGroup>
+  <Accordion title='"No usable photos found" / availableCategories is empty'>
+    The SDK couldn't detect a usable face or full-body pose in the uploaded photos.
+
+    **Good photos:**
+    - Clear, front-facing face
+    - Good lighting (not too dark or too bright)
+    - No sunglasses or face coverings
+    - Not blurry
+
+    **For clothing/footwear:** Need a full-body standing photo, not just face.
+
+    Ask the user to try different photos.
+  </Accordion>
+
+  <Accordion title="Photo processing is very slow">
+    The AI models (face-api.js + MediaPipe) need to download the first time (~5-10s on slow connections). After the first load they're cached by the browser.
+
+    If it's always slow, you may have too many photos. Default cap is 80 — reduce with `maxImages`:
+
+    ```ts
+    Personalize.init({
+      maxImages: 20,
+    });
+    ```
+  </Accordion>
+
+  <Accordion title='"SELECTION_FAILED" error'>
+    Usually caused by corrupt image files or the browser running out of memory processing large photos.
+
+    - Try fewer photos
+    - Try smaller/compressed images
+    - Check browser console for memory errors
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Try-On / Generation Issues
+
+<AccordionGroup>
+  <Accordion title='"Failed to fetch" error during submit'>
+    The SDK can't reach your proxy endpoint.
+
+    **In full-stack mode:**
+    - Is your backend running?
+    - Is CORS configured to allow your frontend origin?
+    - Is the `proxyUrl` correct (including the path)?
+
+    ```ts
+    // proxyUrl should point to your proxy base
+    proxyUrl: "https://yourbrand.com/api/tryon"
+    // SDK will call: POST /api/tryon/submit
+    //                GET  /api/tryon/status/:jobId
+    ```
+
+    **In frontend-only mode:**
+    - Is `https://api.gennoctua.com` reachable?
+    - Check browser Network tab for the actual error
+  </Accordion>
+
+  <Accordion title='"JOB_FAILED" — try-on failed'>
+    HyperPersona couldn't generate the image.
+
+    Common causes:
+    - User photo doesn't have a detectable face (send a clearer photo)
+    - Product image URL is not publicly accessible (check in browser)
+    - Wrong `productType` for the product
+
+    Retry with a different photo or a different product image URL.
+  </Accordion>
+
+  <Accordion title='"JOB_TIMEOUT" — generation taking too long'>
+    HyperPersona is under load. Retry after a few seconds.
+
+    If timeouts are frequent, increase the timeout:
+
+    ```ts
+    Personalize.init({
+      pollIntervalMs: 1500,
+      pollMaxAttempts: 200,  // 5 minutes instead of default 3
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Try-on result looks wrong / bad quality">
+    - Make sure `productType` matches the actual product
+    - Use a clean product image with a white or transparent background
+    - Use a high-quality user photo (clear face, good lighting)
+    - For clothing: use a flat-lay or mannequin product image
+  </Accordion>
+
+  <Accordion title="SSE stream not working (status endpoint)">
+    SSE (Server-Sent Events) requires specific proxy configuration:
+
+    ```nginx
+    # Nginx — required for SSE
+    proxy_buffering off;
+    proxy_read_timeout 300s;
+    chunked_transfer_encoding on;
+    ```
+
+    ```js
+    // Express — required for SSE
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Caching Issues
+
+<AccordionGroup>
+  <Accordion title="Old try-on result is showing instead of a new one">
+    Clear the cache:
+
+    ```ts
+    await sdk.cache.clearAll();
+    ```
+
+    Or reset completely:
+    ```ts
+    sdk.reset();
+    ```
+  </Accordion>
+
+  <Accordion title="Cache is not working (always regenerating)">
+    The cache key includes the user photo hash. If the user selects a different photo (even slightly different), it's a cache miss.
+
+    Also check `resultTtlMs` — if it's too low, results expire quickly:
+    ```ts
+    cache: {
+      resultTtlMs: 604800000  // 7 days (default)
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Framework Issues
+
+<AccordionGroup>
+  <Accordion title="Next.js: Module not found errors">
+    Use webpack mode instead of Turbopack:
+
+    ```bash
+    next dev --webpack
+    ```
+  </Accordion>
+
+  <Accordion title="Next.js: Cannot use import statement in a module">
+    Add `"use client"` to any component using the SDK:
+
+    ```tsx
+    "use client";
+    import { PersonalizeProvider } from "@gennoctua/personalize-react";
+    ```
+  </Accordion>
+
+  <Accordion title="Vite: Build errors with face-api.js">
+    Add to your `vite.config.ts`:
+
+    ```ts
+    optimizeDeps: {
+      exclude: ["@vladmandic/face-api"]
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Still Stuck?
+
+1. Enable debug logging to see exactly what's happening:
+   ```ts
+   Personalize.init({ debug: true, ... });
+   ```
+
+2. Check the browser console (F12 → Console) for errors
+
+3. Check the Network tab to see what requests are being made and what responses are coming back
+
+4. Contact Gennoctua support with:
+   - The error message (exact text)
+   - Your brand key (not your HP API key)
+   - Console output with `debug: true` enabled
+   - Browser and OS version

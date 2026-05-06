@@ -1,0 +1,86 @@
+---
+title: Introduction
+description: AI-powered virtual try-on SDK for fashion brands. Drop it into any website in minutes.
+---
+
+## What is it?
+
+`@gennoctua/personalize-core` is a headless JavaScript SDK that adds AI virtual try-on to any brand website. It handles everything — photo upload, face detection, AI generation, result display — with just a few lines of code.
+
+**You bring:** your UI, your product catalog, your website.
+**We bring:** the AI pipeline, the models, the backend.
+
+---
+
+## Who is this for?
+
+| I am... | Read this |
+|---|---|
+| A **product manager** evaluating the SDK | [Product Overview](/guides/product-overview) |
+| A **developer** integrating the SDK | [Developer Guide](/sdk/developer-guide) |
+| A **full-stack developer** (have frontend + backend) | [Full-Stack Integration](/integration/fullstack) |
+| A **frontend-only developer** (no backend) | [Frontend-Only Integration](/integration/frontend-only) |
+| A **vibe coder** using AI to build websites | [Vibe Coder Guide](/guides/vibe-coder) |
+| Looking for a specific method or event | [API Reference](/sdk/api-reference) |
+| Checking supported product types | [Supported Products](/sdk/supported-products) |
+
+---
+
+## How it works
+
+```
+User uploads photos → SDK picks the best one automatically
+User clicks "Try On" → AI generates personalized image in ~20 seconds
+Brand shows the result → User sees themselves wearing the product
+```
+
+---
+
+## Two integration modes
+
+### Frontend-Only (no backend needed)
+
+<CodeGroup>
+```ts npm
+import { Personalize } from "@gennoctua/personalize-core";
+
+const sdk = await Personalize.init({
+  auth: {
+    publicKey: "gn_pk_yourbrand_xxx"
+  }
+});
+```
+
+```html Script tag
+<script src="https://cdn.gennoctua.com/personalize.min.global.js"></script>
+<script>
+  const sdk = await window.Personalize.init({
+    auth: {
+      publicKey: "gn_pk_yourbrand_xxx"
+    }
+  });
+</script>
+```
+</CodeGroup>
+
+### Full-Stack (you have a backend)
+
+```ts
+const sdk = await Personalize.init({
+  auth: {
+    proxyUrl: "https://yourbrand.com/api/tryon",
+    getToken: async () => await getSessionToken()
+  }
+});
+```
+
+---
+
+## Package contents
+
+| File | What it is |
+|---|---|
+| `dist/index.js` | ESM package for bundlers (React, Vue, Vite) |
+| `dist/index.cjs` | CommonJS package for Node.js |
+| `dist/cdn/personalize.min.global.js` | CDN bundle for `<script>` tag |
+| `dist/index.d.ts` | TypeScript type definitions |

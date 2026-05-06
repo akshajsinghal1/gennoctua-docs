@@ -1,0 +1,301 @@
+---
+title: React Hooks Reference
+description: Complete API reference for all @gennoctua/personalize-react hooks.
+---
+
+## `usePersonalize()`
+
+Access the underlying SDK instance and initialization state.
+
+```ts
+const { sdk, ready, error } = usePersonalize();
+```
+
+### Returns
+
+| Property | Type | Description |
+|---|---|---|
+| `sdk` | `PersonalizeSDK \| null` | The SDK instance. `null` until initialized. |
+| `ready` | `boolean` | `true` when SDK is initialized and ready to use |
+| `error` | `Error \| null` | Initialization error, if any |
+
+### Example
+
+```tsx
+function TryOnButton() {
+  const { sdk, ready } = usePersonalize();
+
+  if (!ready) return <p>Loading...</p>;
+
+  return (
+    <button onClick={() => sdk!.personalize({ imageUrl, productType: "sunglasses" })}>
+      Try On
+    </button>
+  );
+}
+```
+
+---
+
+## `useImageIngestion()`
+
+Handles photo upload and profile selection.
+
+```ts
+const {
+  ingest,
+  summary,
+  ingesting,
+  progress,
+  error,
+  reset,
+} = useImageIngestion();
+```
+
+### Returns
+
+| Property | Type | Description |
+|---|---|---|
+| `ingest` | `(files: FileList) => Promise<void>` | Call with files from a file input |
+| `summary` | `SelectionSummary \| null` | Result of photo selection. `null` before first ingest. |
+| `ingesting` | `boolean` | `true` while photos are being processed |
+| `progress` | `SelectionProgress \| null` | Current progress message and step |
+| `error` | `SDKError \| null` | Error from the last ingest attempt |
+| `reset` | `() => void` | Clear the current selection |
+
+### `SelectionProgress`
+
+```ts
+{
+  message: string;  // e.g. "Scanning faces 3 of 14..."
+  step: number;
+  total: number;
+}
+```
+
+### `SelectionSummary`
+
+```ts
+{
+  availableCategories: UserImageCategory[];
+  missingCategories: UserImageCategory[];
+  totalUploaded: number;
+  totalSelected: number;
+}
+```
+
+### Example
+
+```tsx
+function PhotoUpload() {
+  const { ingest, summary, ingesting, progress, error } = useImageIngestion();
+
+  return (
+    <div>
+      <input
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={(e) => e.target.files && ingest(e.target.files)}
+        disabled={ingesting}
+      />
+
+      {ingesting && (
+        <p>{progress?.message ?? "Processing..."}</p>
+      )}
+
+      {summary && summary.availableCategories.length > 0 && (
+        <p>✓ Ready! {summary.totalSelected} profile(s) selected.</p>
+      )}
+
+      {summary && summary.availableCategories.length === 0 && (
+        <p>No usable photos found. Please upload clear face photos.</p>
+      )}
+
+      {error && (
+        <p style={{ color: "red" }}>Error: {error.message}</p>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## `usePersonalization()`
+
+Runs the try-on and manages the result state.
+
+```ts
+const {
+  personalize,
+  result,
+  loading,
+  error,
+  cancel,
+  reset,
+} = usePersonalization();
+```
+
+### Returns
+
+| Property | Type | Description |
+|---|---|---|
+| `personalize` | `(opts: PersonalizeOpts) => Promise<void>` | Start a try-on |
+| `result` | `PersonalizationResult \| null` | Try-on result when complete |
+| `loading` | `boolean` | `true` while generation is in progress |
+| `error` | `SDKError \| null` | Error from the last try-on attempt |
+| `cancel` | `() => void` | Cancel the current in-progress try-on |
+| `reset` | `() => void` | Clear result and error |
+
+### `PersonalizeOpts`
+
+```ts
+{
+  imageUrl: string;         // product image URL (required)
+  productType: ProductType; // product type (required)
+  productId?: string;       // for caching/analytics (optional)
+}
+```
+
+### `PersonalizationResult`
+
+```ts
+{
+  imageUrl: string;   // try-on image URL
+  cacheHit: boolean;  // true if returned from cache (instant)
+  jobId: string;      // HyperPersona job ID
+}
+```
+
+### Example
+
+```tsx
+function TryOnButton({ productImageUrl }: { productImageUrl: string }) {
+  const { ingest, summary } = useImageIngestion();
+  const { personalize, result, loading, error, cancel } = usePersonalization();
+
+  const canTryOn = summary && summary.availableCategories.length > 0;
+
+  return (
+    <div>
+      {!result && (
+        <button
+          onClick={() => personalize({ imageUrl: productImageUrl, productType: "sunglasses" })}
+          disabled={!canTryOn || loading}
+        >
+          {loading ? "Generating..." : "Try On"}
+        </button>
+      )}
+
+      {loading && (
+        <button onClick={cancel}>Cancel</button>
+      )}
+
+      {error && (
+        <p>Failed: {error.message}. <button onClick={() => personalize({ imageUrl: productImageUrl, productType: "sunglasses" })}>Retry</button></p>
+      )}
+
+      {result && (
+        <div>
+          <img src={result.imageUrl} alt="Try-on result" />
+          {result.cacheHit && <span>⚡ Instant (cached)</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## `PersonalizeProvider`
+
+The context provider. Wrap your app or product page with this.
+
+```tsx
+import { PersonalizeProvider } from "@gennoctua/personalize-react";
+
+<PersonalizeProvider config={sdkConfig}>
+  {children}
+</PersonalizeProvider>
+```
+
+### Props
+
+| Prop | Type | Required | Description |
+|---|---|---|---|
+| `config` | `SDKConfig` | ✅ | Same config object as `Personalize.init()`. See [Configuration](/sdk/configuration). |
+| `children` | `ReactNode` | ✅ | Child components |
+
+---
+
+## Full Example with Toggle
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import {
+  PersonalizeProvider,
+  useImageIngestion,
+  usePersonalization,
+} from "@gennoctua/personalize-react";
+
+function TryOnWidget({ productImageUrl }: { productImageUrl: string }) {
+  const { ingest, summary, ingesting, progress } = useImageIngestion();
+  const { personalize, result, loading, error } = usePersonalization();
+  const [showOriginal, setShowOriginal] = useState(false);
+
+  const canTryOn = summary && summary.availableCategories.length > 0;
+
+  return (
+    <div>
+      {/* Upload */}
+      <input
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={(e) => e.target.files && ingest(e.target.files)}
+        disabled={ingesting}
+      />
+      {ingesting && <p>{progress?.message}</p>}
+
+      {/* Try On Button */}
+      {canTryOn && !result && (
+        <button
+          onClick={() => personalize({ imageUrl: productImageUrl, productType: "sunglasses" })}
+          disabled={loading}
+        >
+          {loading ? "Generating (~20s)..." : "✨ Try On"}
+        </button>
+      )}
+
+      {/* Error */}
+      {error && <p style={{ color: "red" }}>{error.message}</p>}
+
+      {/* Result with toggle */}
+      {result && (
+        <div>
+          <img
+            src={showOriginal ? productImageUrl : result.imageUrl}
+            alt={showOriginal ? "Original product" : "Try-on result"}
+            style={{ maxWidth: 400 }}
+          />
+          <button onClick={() => setShowOriginal(!showOriginal)}>
+            {showOriginal ? "→ Show Try-On" : "← Show Original"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ProductPage() {
+  return (
+    <PersonalizeProvider config={{ auth: { publicKey: "gn_pk_yourbrand_xxx" } }}>
+      <TryOnWidget productImageUrl="https://brand.com/product.jpg" />
+    </PersonalizeProvider>
+  );
+}
+```

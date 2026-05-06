@@ -1,0 +1,134 @@
+---
+title: Rate Limiting
+description: How the SDK prevents abuse and manages request frequency.
+---
+
+## Overview
+
+The SDK has two layers of rate limiting:
+
+| Layer | Where | Purpose |
+|---|---|---|
+| **Client-side** | Browser (SDK) | Prevents rapid retries, limits per session |
+| **Server-side** | Gennoctua / brand backend | Prevents abuse across all users |
+
+Client-side rate limiting is enforced by the SDK itself — no server needed. Server-side is enforced by the backend.
+
+---
+
+## Client-Side Rate Limiting
+
+Configured in `rateLimit.personalization`:
+
+```ts
+Personalize.init({
+  rateLimit: {
+    personalization: {
+      enabled: true,
+      cooldownMs: 10000,     // 10 seconds between requests
+      maxPerSession: 20,     // max 20 try-ons per browser session
+      maxPerProduct: 3,      // max 3 try-ons per product per session
+      singleFlight: true,    // deduplicate concurrent requests
+    }
+  }
+});
+```
+
+### `cooldownMs`
+
+Minimum time (in ms) between consecutive try-on requests. If the user clicks Try On again before the cooldown expires, the SDK throws `RATE_LIMITED_CLIENT`.
+
+```ts
+cooldownMs: 10000  // 10 seconds (default)
+```
+
+**Recommended UX:** Disable the Try On button for the duration of cooldown after a request.
+
+### `maxPerSession`
+
+Maximum number of try-ons allowed in one browser session (until the page is closed). After this limit is hit, all further requests throw `RATE_LIMITED_CLIENT`.
+
+```ts
+maxPerSession: 20  // default
+```
+
+### `maxPerProduct`
+
+Maximum number of try-ons for a single product per session. Useful to prevent users from repeatedly regenerating the same product.
+
+```ts
+maxPerProduct: 3  // default
+```
+
+### `singleFlight`
+
+If `true`, and a try-on is already in progress for the same product, a second call to `sdk.personalize()` with the same product will return the **same promise** instead of submitting a new job.
+
+```ts
+singleFlight: true  // default
+```
+
+This prevents duplicate jobs if the user clicks the button multiple times while generation is in progress.
+
+---
+
+## Handling Rate Limit Errors
+
+```ts
+import { SDKError } from "@gennoctua/personalize-core";
+
+try {
+  const result = await sdk.personalize({ imageUrl, productType });
+} catch (err) {
+  if (err instanceof SDKError && err.code === "RATE_LIMITED_CLIENT") {
+    showMessage("Please wait a moment before trying again.");
+    setTimeout(() => {
+      tryOnButton.disabled = false;
+    }, 10000);
+  }
+}
+```
+
+Or via event:
+```ts
+sdk.on("personalization:rate_limited", ({ reason }) => {
+  showMessage("Too many requests. Please wait.");
+});
+```
+
+---
+
+## Server-Side Rate Limiting
+
+The Gennoctua backend enforces rate limits per brand key and per IP. When hit, the SDK receives a `429` response and throws `RATE_LIMITED_SERVER`.
+
+These limits are managed by Gennoctua. Contact support if you need higher limits.
+
+---
+
+## Disabling Rate Limiting
+
+For testing or high-volume use cases:
+
+```ts
+rateLimit: {
+  personalization: {
+    enabled: false,
+  }
+}
+```
+
+<Warning>
+Never disable rate limiting in production. It protects you from unexpected API cost spikes.
+</Warning>
+
+---
+
+## Default Limits Summary
+
+| Limit | Default | Config option |
+|---|---|---|
+| Cooldown between requests | 10 seconds | `cooldownMs` |
+| Max try-ons per session | 20 | `maxPerSession` |
+| Max try-ons per product | 3 | `maxPerProduct` |
+| Deduplicate concurrent requests | Yes | `singleFlight` |

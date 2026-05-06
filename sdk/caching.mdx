@@ -1,0 +1,166 @@
+---
+title: Caching
+description: How the SDK caches try-on results and profile selections in the browser.
+---
+
+## Overview
+
+The SDK caches two things in the browser's **IndexedDB**:
+
+| What | Where | Default TTL |
+|---|---|---|
+| Try-on results (generated images) | IndexedDB | 7 days |
+| Profile selection (best photo) | IndexedDB | 24 hours |
+| Active jobs (in-progress generation) | IndexedDB | 5 minutes |
+
+Caching is automatic. You don't need to do anything — it just works.
+
+---
+
+## Result Caching
+
+When a try-on completes, the result URL is cached. The next time the same user tries on the same product, the result is returned **instantly** from cache — no AI generation required.
+
+### Cache Key
+
+```
+orgId + userImageHash + productImageHash + productType
+```
+
+- `orgId` — derived from your brand key or proxy URL
+- `userImageHash` — derived from the selected profile photo's filename, size, and last-modified date
+- `productImageHash` — hash of the product image URL
+- `productType` — e.g. `"sunglasses"`
+
+This means:
+- ✅ Same user + same product = instant (cache hit)
+- ✅ Cache survives page refresh and browser close
+- ✅ Cache survives tab close
+- ❌ Different device = no cache (IndexedDB is per-browser)
+- ❌ Different photo = no cache (new userImageHash)
+- ❌ Different product = no cache
+
+### Detecting a Cache Hit
+
+```ts
+const result = await sdk.personalize({ imageUrl, productType });
+
+if (result.cacheHit) {
+  console.log("Instant — loaded from cache!");
+} else {
+  console.log("Generated fresh in ~20s");
+}
+```
+
+Or via event:
+```ts
+sdk.on("personalization:cache_hit", (result) => {
+  console.log("Cache hit:", result.imageUrl);
+});
+```
+
+### Cache TTL
+
+Default: **7 days**. Configure:
+
+```ts
+Personalize.init({
+  cache: {
+    resultTtlMs: 86400000,  // 1 day
+  }
+});
+```
+
+---
+
+## Profile Selection Caching
+
+After `ingestImages()` runs and selects the best profile photo, the selection is cached. On the next page load, the SDK restores it automatically — the user doesn't need to re-upload photos.
+
+### Cache TTL
+
+Default: **24 hours**. Configure:
+
+```ts
+Personalize.init({
+  cache: {
+    selectionTtlMs: 3600000,  // 1 hour
+  }
+});
+```
+
+---
+
+## Active Job Caching
+
+When a try-on job is submitted (job_id received), the SDK stores the `job_id` in IndexedDB. If the user refreshes the page mid-generation, the SDK automatically resumes polling the existing job instead of submitting a new one.
+
+### Configuration
+
+```ts
+Personalize.init({
+  cache: {
+    restoreActiveJobs: true,      // default: true
+    activeJobMaxAgeMs: 300000,    // don't restore jobs older than 5 min (default)
+  }
+});
+```
+
+Disable if you always want fresh submissions on page load:
+```ts
+cache: {
+  restoreActiveJobs: false,
+}
+```
+
+---
+
+## Clearing Cache
+
+### Clear all cached results
+
+```ts
+await sdk.cache.clearAll();
+```
+
+Use this when the user wants to start fresh (e.g. "Reset" button).
+
+### Clear a specific result
+
+```ts
+await sdk.cache.clearResult(orgId, userImageHash, productImageHash, productType);
+```
+
+### Clear via reset
+
+```ts
+// Clears profile selection + all cached results
+sdk.reset();
+```
+
+---
+
+## Cache Limits
+
+IndexedDB storage is managed by the browser. Typical limits:
+
+| Browser | Storage limit |
+|---|---|
+| Chrome | ~80% of available disk space |
+| Firefox | ~50% of available disk space |
+| Safari | 1GB per origin |
+
+Try-on images are stored as URLs (not the actual image data), so the cache footprint is minimal — a few KB per entry.
+
+---
+
+## Cache Internals
+
+The SDK uses two IndexedDB object stores:
+
+| Store | Key | Value |
+|---|---|---|
+| `tryon_results` | `orgId:userHash:productHash:productType` | `{ imageUrl, cachedAt, ttlMs }` |
+| `tryon_jobs` | `orgId:cacheKey` | `{ jobId, startedAt }` |
+
+You can inspect this in Chrome DevTools → Application → IndexedDB → `gennoctua-personalize`.
