@@ -22,74 +22,81 @@
     "name": "Get a Brand Key",
     "url": "https://gennoctua.com/contact"
   },
-  "navigation": [
-    {
-      "group": "Getting Started",
-      "pages": [
-        "introduction",
-        "quickstart",
-        "architecture"
-      ]
-    },
-    {
-      "group": "Integration",
-      "pages": [
-        "integration/choose",
-        "integration/frontend-only",
-        "integration/fullstack"
-      ]
-    },
-    {
-      "group": "SDK Reference",
-      "pages": [
-        "sdk/developer-guide",
-        "sdk/configuration",
-        "sdk/api-reference",
-        "sdk/events",
-        "sdk/error-codes",
-        "sdk/supported-products",
-        "sdk/caching",
-        "sdk/rate-limiting"
-      ]
-    },
-    {
-      "group": "React",
-      "pages": [
-        "react/overview",
-        "react/hooks"
-      ]
-    },
-    {
-      "group": "Security",
-      "pages": [
-        "security/overview",
-        "security/authentication"
-      ]
-    },
-    {
-      "group": "Guides",
-      "pages": [
-        "guides/vibe-coder",
-        "guides/product-overview",
-        "guides/brand-onboarding",
-        "guides/analytics"
-      ]
-    },
-    {
-      "group": "Admin API",
-      "pages": [
-        "admin/overview",
-        "admin/brands"
-      ]
-    },
-    {
-      "group": "Help",
-      "pages": [
-        "help/troubleshooting",
-        "help/faq"
-      ]
-    }
-  ],
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "architecture"
+            ]
+          },
+          {
+            "group": "Integration",
+            "pages": [
+              "integration/choose",
+              "integration/frontend-only",
+              "integration/fullstack"
+            ]
+          },
+          {
+            "group": "SDK Reference",
+            "pages": [
+              "sdk/developer-guide",
+              "sdk/configuration",
+              "sdk/api-reference",
+              "sdk/events",
+              "sdk/error-codes",
+              "sdk/supported-products",
+              "sdk/caching",
+              "sdk/rate-limiting"
+            ]
+          },
+          {
+            "group": "React",
+            "pages": [
+              "react/overview",
+              "react/hooks"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/overview",
+              "security/authentication"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/vibe-coder",
+              "guides/product-overview",
+              "guides/brand-onboarding",
+              "guides/analytics"
+            ]
+          },
+          {
+            "group": "Admin API",
+            "pages": [
+              "admin/overview",
+              "admin/brands"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "help/troubleshooting",
+              "help/faq"
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "footerSocials": {
     "website": "https://gennoctua.com"
   }
