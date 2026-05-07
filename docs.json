@@ -75,15 +75,7 @@
             "pages": [
               "guides/vibe-coder",
               "guides/product-overview",
-              "guides/brand-onboarding",
               "guides/analytics"
-            ]
-          },
-          {
-            "group": "Admin API",
-            "pages": [
-              "admin/overview",
-              "admin/brands"
             ]
           },
           {

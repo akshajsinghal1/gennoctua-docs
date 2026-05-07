@@ -26,7 +26,7 @@ The SDK uses **short-lived JWTs (1 hour)** for all requests to the backend. JWTs
 ### Token Request
 
 ```http
-POST https://api.gennoctua.com/auth/token
+POST https://token.gennoctua.com/auth/token
 Content-Type: application/json
 
 {
@@ -60,7 +60,7 @@ Content-Type: application/json
 Personalize.init({
   auth: {
     publicKey: "gn_pk_mauijim_xxx",
-    gennoctuaUrl: "https://api.gennoctua.com"  // default, can omit
+    gennoctuaUrl: "https://token.gennoctua.com"  // default, can omit
   }
 })
 ```
@@ -199,13 +199,6 @@ Personalize.init({
 
 ---
 
-## Deactivating a Brand
+## Deactivating a Brand Key
 
-If a brand key is compromised, deactivate it immediately via the Admin API:
-
-```bash
-curl -X DELETE https://api.gennoctua.com/admin/brands/gn_pk_compromised_xxx \
-  -H "x-admin-secret: YOUR_ADMIN_SECRET"
-```
-
-All subsequent token requests with that brand key will return `401 Invalid or inactive brand key`.
+If your brand key is compromised, contact Gennoctua immediately. We can deactivate it instantly — all subsequent token requests with that key will return `401 Invalid or inactive brand key`. You'll receive a new brand key to replace it.

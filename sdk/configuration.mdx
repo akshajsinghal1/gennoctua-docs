@@ -30,20 +30,20 @@ Controls how the SDK authenticates with the backend.
 ```ts
 auth: {
   publicKey: string;         // Your gn_pk_... brand key from Gennoctua
-  gennoctuaUrl?: string;     // Default: "https://api.gennoctua.com"
+  gennoctuaUrl?: string;     // Default: "https://token.gennoctua.com"
 }
 ```
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `publicKey` | `string` | — | Your `gn_pk_...` brand key. Required. |
-| `gennoctuaUrl` | `string` | `"https://api.gennoctua.com"` | Gennoctua backend URL. Override for staging/testing. |
+| `gennoctuaUrl` | `string` | `"https://token.gennoctua.com"` | Gennoctua backend URL. Override for staging/testing. |
 
 **Example:**
 ```ts
 auth: {
   publicKey: "gn_pk_mauijim_a3f8c2d1",
-  gennoctuaUrl: "https://api.gennoctua.com"
+  gennoctuaUrl: "https://token.gennoctua.com"
 }
 ```
 
