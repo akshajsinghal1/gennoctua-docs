@@ -1,6 +1,6 @@
 /* Navbar logo — Mintlify default is small; tune height as you like */
 nav-logo img {
-  height: 5.5rem !important; /* 88px — large brand mark */
+  height: 15rem !important; /* 240px at 16px root */
   width: auto !important;
   max-height: none !important;
 }
