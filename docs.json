@@ -2,7 +2,10 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Gennoctua",
-  "logo": "/dark-theme.svg",
+  "logo": {
+    "light": "/zclap-logo-light.svg",
+    "dark": "/dark-theme.svg"
+  },
   "favicon": "/favicon.svg",
   "colors": {
     "primary": "#6366f1",
