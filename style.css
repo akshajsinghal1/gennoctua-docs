@@ -1,6 +1,23 @@
-/* Navbar logo — Mintlify default is small; tune height as you like */
-nav-logo img {
-  height: 15rem !important; /* 240px at 16px root */
+/*
+ * Navbar logo sizing
+ *
+ * Mintlify renders the logo as <img class="nav-logo ... h-6"> (Tailwind h-6),
+ * not a <nav-logo> wrapper. Target img.nav-logo so overrides apply.
+ * The inner bar uses h-12 — allow it to grow so a taller logo is not clipped.
+ */
+#navbar img.nav-logo {
+  height: 5rem !important;
+  width: auto !important;
+  max-height: none !important;
+}
+
+#navbar div.hidden.lg\:flex.items-center.h-12 {
+  height: auto !important;
+  min-height: 4.5rem !important;
+}
+
+#mobile-nav img.nav-logo {
+  height: 4rem !important;
   width: auto !important;
   max-height: none !important;
 }
