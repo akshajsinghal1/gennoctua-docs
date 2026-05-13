@@ -1,0 +1,6 @@
+/* Navbar logo — Mintlify default is small; tune height as you like */
+nav-logo img {
+  height: 2.5rem !important; /* 40px — try 2.75rem (44px) or 3rem (48px) */
+  width: auto !important;
+  max-height: none !important;
+}
