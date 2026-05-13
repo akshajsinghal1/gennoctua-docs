@@ -11,8 +11,9 @@ In full-stack mode:
 - Your **frontend** uses the SDK with those tokens
 - The SDK sends requests to your backend proxy, which forwards to HP
 
-```
-Browser (SDK) → Your Backend Proxy → HP AI
+```mermaid
+flowchart LR
+  B[Browser SDK] --> Y[Your backend proxy] --> H[HP AI]
 ```
 
 ---

@@ -23,9 +23,15 @@ When a try-on completes, the result URL is cached. The next time the same user t
 
 ### Cache Key
 
+```mermaid
+flowchart LR
+  O[orgId] --> K[Result cache key]
+  U[userImageHash] --> K
+  P[productImageHash] --> K
+  T[productType] --> K
 ```
-orgId + userImageHash + productImageHash + productType
-```
+
+Components:
 
 - `orgId` — derived from your brand key or proxy URL
 - `userImageHash` — derived from the selected profile photo's filename, size, and last-modified date

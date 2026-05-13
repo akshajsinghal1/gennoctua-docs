@@ -30,11 +30,14 @@ The SDK is designed around three security principles:
 See [Authentication](/security/authentication) for the full JWT lifecycle.
 
 **Short version:**
-```
-1. Brand key → Gennoctua → 1hr JWT
-2. JWT → proxy request headers
-3. Backend validates JWT → forwards with HP API key
-4. HP API key never reaches the browser
+
+```mermaid
+flowchart TD
+  A["Brand key to Gennoctua"] --> B["1hr JWT"]
+  B --> C["JWT on each proxy request"]
+  C --> D["Backend validates JWT"]
+  D --> E["Forward to HP with HP API key"]
+  E --> F["HP API key never in browser"]
 ```
 
 ---

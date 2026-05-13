@@ -5,39 +5,18 @@ description: How the SDK, Gennoctua backend, and HP AI fit together.
 
 ## System Overview
 
+The SDK in the browser handles face/pose, selection, jobs, caching, and rate limits. All HP traffic goes through an auth proxy (Gennoctua or your backend).
+
+```mermaid
+flowchart LR
+  subgraph browser["Browser — brand site"]
+    SDK["@gennoctua/personalize-core"]
+  end
+  SDK -->|HTTPS| proxy["Auth proxy"]
+  proxy -->|HTTPS + HP credentials| hp["HP AI"]
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Brand's Website                       │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │           @gennoctua/personalize-core            │   │
-│  │                                                  │   │
-│  │  • Face detection (face-api.js)                  │   │
-│  │  • Pose scoring (MediaPipe)                      │   │
-│  │  • Photo selection                               │   │
-│  │  • Job submission & polling                      │   │
-│  │  • Result caching (IndexedDB)                    │   │
-│  │  • Rate limiting                                 │   │
-│  └──────────────────────────────────────────────────┘   │
-└────────────────────────┬────────────────────────────────┘
-                         │ HTTPS
-                         ▼
-           ┌─────────────────────────┐
-           │   Auth Proxy (one of):  │
-           │                         │
-           │  A) Gennoctua Backend   │  ← frontend-only brands
-           │     token.gennoctua.com   │
-           │                         │
-           │  B) Brand's Own Backend │  ← full-stack brands
-           │     brand.com/api/tryon │
-           └────────────┬────────────┘
-                        │ HTTPS + API Key
-                        ▼
-           ┌─────────────────────────┐
-           │      HP AI    │
-           │   (AI try-on engine)    │
-           └─────────────────────────┘
-```
+
+The auth proxy is **either** Gennoctua (`token.gennoctua.com`, frontend-only) **or** your own backend (full-stack). The SDK loads **face-api.js** and **MediaPipe**, runs **selection**, **submit + SSE status**, **IndexedDB** caching, and **rate limits**.
 
 ---
 
@@ -47,66 +26,51 @@ description: How the SDK, Gennoctua backend, and HP AI fit together.
 
 Used by brands with no backend (Shopify, Webflow, plain HTML).
 
-```
-1. Brand receives gn_pk_... key from Gennoctua
-2. SDK calls POST /auth/token with publicKey
-3. Gennoctua validates key → returns 1hr JWT
-4. SDK uses JWT to call /api/tryon/submit and /api/tryon/status
-5. Gennoctua looks up brand's HP API key → proxies to HP
-```
+1. Brand receives `gn_pk_...` key from Gennoctua
+2. SDK calls `POST /auth/token` with `publicKey`
+3. Gennoctua validates key and returns a 1hr JWT
+4. SDK uses the JWT for `/api/tryon/submit` and `/api/tryon/status`
+5. Gennoctua looks up the brand's HP API key and proxies to HP
 
-```
-Browser SDK
-    │
-    ├─── POST /auth/token { publicKey: "gn_pk_..." }
-    │         ↓
-    │    Gennoctua Backend
-    │         │ validates brand key in SQLite DB
-    │         └─── returns { token: "eyJ...", expiresIn: 3600 }
-    │
-    ├─── POST /api/tryon/submit (Bearer token)
-    │         ↓
-    │    Gennoctua Backend
-    │         │ validates JWT, looks up hp_api_key
-    │         └─── forwards to HP (X-API-Key: hpk_...)
-    │
-    └─── GET /api/tryon/status/:jobId (Bearer token)
-              ↓
-         Gennoctua Backend
-              │ validates JWT, looks up hp_api_key
-              └─── streams SSE from HP back to browser
+```mermaid
+sequenceDiagram
+  participant B as Browser SDK
+  participant G as Gennoctua
+  participant H as HP
+  B->>G: POST /auth/token publicKey
+  Note over G: Validate brand key
+  G-->>B: JWT expiresIn 3600
+  B->>G: POST /api/tryon/submit Bearer JWT
+  Note over G: Validate JWT, lookup hp_api_key
+  G->>H: Forward multipart X-API-Key
+  B->>G: GET /api/tryon/status jobId SSE
+  Note over G: Validate JWT, lookup hp_api_key
+  G-->>B: SSE stream from HP
 ```
 
 ### Path B — Full-Stack (brand's own backend)
 
 Used by brands that have their own Node.js, Next.js, Express, etc. backend.
 
-```
-1. Brand stores HP API key in their .env
-2. Brand builds token endpoint (POST /auth/tryon-token)
-3. Brand builds proxy endpoints (POST + GET /api/tryon/...)
-4. SDK calls brand's own backend with JWT
-5. Brand's backend forwards to HP
-```
+1. Brand stores the HP API key in `.env` (never in the browser)
+2. Brand exposes a token endpoint (e.g. `POST /auth/tryon-token`)
+3. Brand exposes try-on proxy routes (`POST` + `GET /api/tryon/...`)
+4. SDK calls the brand backend with the JWT
+5. Brand backend forwards to HP
 
-```
-Browser SDK
-    │
-    ├─── POST /auth/tryon-token
-    │         ↓
-    │    Brand's Backend
-    │         │ generates JWT with brand's own JWT_SECRET
-    │         └─── returns { token: "eyJ...", expiresIn: 3600 }
-    │
-    ├─── POST /api/tryon/submit (Bearer token)
-    │         ↓
-    │    Brand's Backend
-    │         │ validates JWT, uses HP_API_KEY from .env
-    │         └─── forwards to HP
-    │
-    └─── GET /api/tryon/status/:jobId (Bearer token)
-              ↓
-         Brand's Backend → streams SSE from HP
+```mermaid
+sequenceDiagram
+  participant B as Browser SDK
+  participant Y as Brand backend
+  participant H as HP
+  B->>Y: POST /auth/tryon-token
+  Note over Y: Issue JWT with JWT_SECRET
+  Y-->>B: JWT expiresIn 3600
+  B->>Y: POST /api/tryon/submit Bearer JWT
+  Note over Y: Validate JWT, use HP_API_KEY
+  Y->>H: Forward to HP
+  B->>Y: GET /api/tryon/status jobId SSE
+  Y-->>B: SSE stream from HP
 ```
 
 ---
@@ -128,28 +92,34 @@ Browser SDK
 
 ## Data Flow: Full Try-On Lifecycle
 
-```
-1. sdk.init()
-   └── Loads face-api.js + MediaPipe models (CDN, ~5-10s first time)
-   └── Fetches JWT token from auth endpoint
-
-2. sdk.ingestImages(files)
-   ├── Filters valid image files (max 80)
-   ├── Runs face detection on each photo
-   ├── Classifies gender + age per face
-   ├── Scores pose quality per full-body photo
-   ├── Selects best male + female candidate
-   └── Returns SelectionSummary
-
-3. sdk.personalize({ imageUrl, productType })
-   ├── Checks result cache (IndexedDB) → cache hit? return instantly
-   ├── Checks active job cache → restoring? skip submission
-   ├── Checks rate limiter → too fast? throw RATE_LIMITED_CLIENT
-   ├── Submits job (POST /submit) → receives job_id
-   ├── Opens SSE stream (GET /status/:jobId)
-   ├── Polls until COMPLETED or FAILED (every 1.5s, max 3 min)
-   ├── Caches result in IndexedDB (7 day TTL)
-   └── Returns PersonalizationResult { imageUrl, cacheHit, jobId }
+```mermaid
+flowchart TD
+  subgraph init["1. sdk.init"]
+    i1["Load face-api.js + MediaPipe from CDN first load ~5 to 10s"]
+    i2["Fetch JWT from auth endpoint"]
+    i1 --> i2
+  end
+  subgraph ingest["2. sdk.ingestImages"]
+    g1["Filter images max 80"]
+    g2["Face detection per photo"]
+    g3["Gender + age classification"]
+    g4["Pose scoring for body shots"]
+    g5["Select best profiles"]
+    g6["Return SelectionSummary"]
+    g1 --> g2 --> g3 --> g4 --> g5 --> g6
+  end
+  subgraph pers["3. sdk.personalize"]
+    p1["IndexedDB result cache hit short circuit"]
+    p2["Restore in-flight job if configured"]
+    p3["Client rate limit check"]
+    p4["POST submit multipart job_id"]
+    p5["GET status jobId SSE until terminal state"]
+    p6["Cache result TTL default 7 days"]
+    p7["Return imageUrl cacheHit jobId"]
+    p1 --> p2 --> p3 --> p4 --> p5 --> p6 --> p7
+  end
+  init --> ingest
+  ingest --> pers
 ```
 
 ---
