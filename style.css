@@ -1,23 +1,28 @@
 /*
- * Navbar logo sizing
- *
- * Mintlify renders the logo as <img class="nav-logo ... h-6"> (Tailwind h-6),
- * not a <nav-logo> wrapper. Target img.nav-logo so overrides apply.
- * The inner bar uses h-12 — allow it to grow so a taller logo is not clipped.
+ * Navbar logo — Mintlify uses Tailwind (e.g. h-6) on the logo <img>.
+ * Use broad selectors + !important so we win over utility order.
+ * Also see logo-size.js (injected after hydration) if CSS alone is not enough.
  */
-#navbar img.nav-logo {
+img[class*="nav-logo"],
+img.nav-logo {
   height: 5rem !important;
   width: auto !important;
   max-height: none !important;
 }
 
-#navbar div.hidden.lg\:flex.items-center.h-12 {
-  height: auto !important;
-  min-height: 4.5rem !important;
+/* If Mintlify uses a <nav-logo> web component in some themes */
+nav-logo img {
+  height: 5rem !important;
+  width: auto !important;
+  max-height: none !important;
 }
 
-#mobile-nav img.nav-logo {
-  height: 4rem !important;
+/* Your hosted assets (paths in docs.json) — backup if class names change */
+#navbar img[src*="dark-theme"],
+#navbar img[src*="zclap-logo-light"],
+#mobile-nav img[src*="dark-theme"],
+#mobile-nav img[src*="zclap-logo-light"] {
+  height: 5rem !important;
   width: auto !important;
   max-height: none !important;
 }
